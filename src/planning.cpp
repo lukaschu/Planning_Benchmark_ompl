@@ -162,9 +162,9 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[0] = velocity[0] + ctrl[0] * duration;
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[1] = velocity[1] + ctrl[1] * duration;
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[2] = velocity[2] + ctrl[2] * duration;
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[3] = velocity[3] + ctrl[0] * duration;
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[4] = velocity[4] + ctrl[1] * duration;
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[5] = velocity[5] + ctrl[2] * duration;
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[3] = velocity[3] + ctrl[3] * duration;
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[4] = velocity[4] + ctrl[4] * duration;
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[5] = velocity[5] + ctrl[5] * duration;
     // position q1
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0] = position[0] + 
     velocity[0] * duration + 0.5 * ctrl[0] * std::pow(duration,2); 
