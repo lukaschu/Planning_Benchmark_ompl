@@ -21,6 +21,7 @@
 #include <ompl/control/planners/kpiece/KPIECE1.h>
 #include <ompl/control/planners/pdst/PDST.h>
 #include <ompl/control/planners/rrt/RRT.h>
+#include <ompl/control/planners/sst/SST.h>
 #include <ompl/control/spaces/RealVectorControlSpace.h>
 
 
