@@ -128,13 +128,15 @@ Function that checks if a state given as (q,q_dot,t) /in R^7, is a valid state
 */
 bool Planning::isStateValid(const oc::SpaceInformation *si, const ob::State *state) 
 {   
-    if (state == nullptr)
-    {
-        return false;
+    // Check if state within bounds
+    bool withinbounds = si->satisfiesBounds(state);
+    if(withinbounds)
+    {   
+        return true;
     }
     else
     {
-        return true;
+        return false;
     }
 }   
 
@@ -227,7 +229,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     // Problem definition
     auto pdef = std::make_shared<ob::ProblemDefinition>(si_);
-    pdef->setStartAndGoalStates(initial, final);
+    pdef->setStartAndGoalStates(initial, final, 4);
 
     // Defining the planner (EST, RRT, KPIECE, PDST) (is not very smooth but don't know how else)
     using PLANNER = oc::RRT;
@@ -244,8 +246,6 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     planner->setup();
 
-    std::cerr << "solving the problem" <<std::endl;
-
     //si_->printSettings(std::cout);
     //pdef->print();
 
@@ -260,6 +260,8 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
         std::cerr << "got solution in: " << duration.count() / 1000 << " seconds" << std::endl;
         path = pdef->getSolutionPath();
         path->print(std::cerr);
+
+        std::cerr << "Actual goal was: " << final << std::endl;
     }
     planner->clear();
 }
