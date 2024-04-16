@@ -11,12 +11,12 @@ unsigned int MyProjection::getDimension(void) const
 void MyProjection::defaultCellSizes(void)
 {
     cellSizes_.resize(6);
-    cellSizes_[0] = 0.1;
-    cellSizes_[1] = 0.1;
-    cellSizes_[2] = 0.1;
-    cellSizes_[3] = 0.1;
-    cellSizes_[4] = 0.1;
-    cellSizes_[5] = 0.1;
+    cellSizes_[0] = 1;
+    cellSizes_[1] = 1;
+    cellSizes_[2] = 1;
+    cellSizes_[3] = 1;
+    cellSizes_[4] = 1;
+    cellSizes_[5] = 1;
 }
 
 void MyProjection::project(const ob::State *state, Eigen::Ref<Eigen::VectorXd> projection) const
