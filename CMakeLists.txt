@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ompl REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
 
 include_directories(
   include
@@ -24,7 +25,7 @@ add_executable(simulation src/simulation_main.cpp)
 
 add_library(${PROJECT_NAME}_NODE src/planning.cpp src/simulation.cpp src/utils.cpp)
 
-ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3)
+ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface)
 
 install(DIRECTORY
   launch

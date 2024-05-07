@@ -1,12 +1,16 @@
 #include "benchmark_planning/planning.hpp"
 #include "benchmark_planning/utils.hpp"
 
+const std::string MOVE_GROUP = "ur_manipulator";
+
 Planning::Planning()
-: Node("planner")
+: Node("planner"), move_group_interface_(std::shared_ptr<rclcpp::Node>(std::move(this)), MOVE_GROUP)
 {   
+    RCLCPP_INFO(this->get_logger(), "planning constructor running");
+
     // Get params
     this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
-    get_parameter("solver", solver_); 
+    get_parameter("solver", solver_);
 
     space_ = std::make_shared<ob::CompoundStateSpace>();
 
@@ -117,7 +121,7 @@ Planning::Planning()
 
     // Define dynamic propagation for the system
     si_->setStatePropagator(dynamics);
-    si_->setPropagationStepSize(0.1); 
+    si_->setPropagationStepSize(0.8); 
     si_->setMinMaxControlDuration(2,30);
 
     si_->setup();
@@ -191,7 +195,7 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
 
 /*
 Function that gets the scenario and loads it in
-Can subsequently be used for collision checking
+Can subsequently be used for initialization of collision scene
 */
 void Planning::load_scenario()
 {
@@ -229,10 +233,10 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     // Problem definition
     auto pdef = std::make_shared<ob::ProblemDefinition>(si_);
-    pdef->setStartAndGoalStates(initial, final, 4);
+    pdef->setStartAndGoalStates(initial, final, 8);
 
     // Defining the planner (EST, RRT, KPIECE, PDST) (is not very smooth but don't know how else)
-    using PLANNER = oc::RRT;
+    using PLANNER = oc::EST;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
@@ -241,8 +245,8 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     planner->as<PLANNER>()->setGoalBias(0.1);
     
     // Uncomment if RRT
-    //space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
-    //planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
+    space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
+    planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
 
     planner->setup();
 
@@ -251,7 +255,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     auto start = std::chrono::steady_clock::now(); // timer start
     // Solve the problem (max t seconds)
-    ob::PlannerStatus solved = planner->ob::Planner::solve(500.0);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(200.0);
     auto end = std::chrono::steady_clock::now(); // timer end
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -265,3 +269,33 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     }
     planner->clear();
 }
+
+
+void Planning::solve_with_moveit(std::vector<double> initial_state, std::vector<double> final_state)
+{
+    
+    auto const target_pose = []{
+        geometry_msgs::msg::Pose msg;
+        msg.orientation.w = 1.0;
+        msg.position.x = 0.28;
+        msg.position.y = -0.2;
+        msg.position.z = 0.5;
+        return msg;
+    }();
+
+    // // Apply target to move_group_interface
+    move_group_interface_.setPoseTarget(target_pose);
+
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
+    bool success = (move_group_interface_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+
+
+    // // Execute the plan
+    if(success) {
+        move_group_interface_.execute(plan);
+    } else {
+        std::cerr << "No success gadddaammnn" << std::endl;
+    }
+    
+}
+

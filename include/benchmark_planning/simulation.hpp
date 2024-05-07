@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "benchmark_planning/planning.hpp"

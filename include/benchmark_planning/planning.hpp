@@ -24,6 +24,8 @@
 #include <ompl/control/planners/sst/SST.h>
 #include <ompl/control/spaces/RealVectorControlSpace.h>
 
+#include <moveit/move_group_interface/move_group_interface.h>
+using moveit::planning_interface::MoveGroupInterface;
 
 //#include <ompl/base/RealVectorBounds.h>
 //#include <ompl/base/CompoundStateSpace.h>
@@ -40,12 +42,15 @@ public:
     void load_scenario();
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state);
     void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path);
+    void solve_with_moveit(std::vector<double> initial_state, std::vector<double> final_state);
 
 private:
     std::shared_ptr<ob::CompoundStateSpace> space_; // defines config. space (q,q_dot)
     std::shared_ptr<oc::RealVectorControlSpace> ctrl_space_; // defines input/ctrl space (acccel. = q_dot_dot)
     std::shared_ptr<oc::SpaceInformation> si_;
     std::string solver_; // Defines the sampling algo. that is used (RRT*, Kpiece ....)
+    //std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_interface_; // interface for moveit comunication
+    MoveGroupInterface move_group_interface_;
 };
 
 #endif

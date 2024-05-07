@@ -1,0 +1,27 @@
+#robot specific settings
+ros2_control_hardware_type: "mock_components"  # [mock_components, isaac, real_hardware]
+robot_ip: "192.168.0.42"
+reverse_ip: "192.168.0.21"
+ur_type: "ur10e"
+launch_rviz: "true"
+rviz_file: "view_robot.rviz"
+move_group_rviz_plugin: "true"
+
+# ros2 parameters
+motion_core_node:
+  pose_config: "spa"
+  save_trajectories: True
+  reuse_trajectories: False
+
+environment_node:
+  env_config: "spa"
+
+# standard settings UR
+launch_dashboard_client: "true"
+warehouse_sqlite_path: os.path.expanduser("~/.ros/warehouse_ros.sqlite")
+activate_joint_controller: "true"
+controller_spawner_timeout: "10"
+initial_joint_controller: "joint_trajectory_controller" #"scaled_joint_trajectory_controller"
+use_tool_communication: "false"
+tool_tcp_port: "54321"
+tool_device_name: "/tmp/ttyUR"

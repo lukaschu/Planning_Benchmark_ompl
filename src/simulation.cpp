@@ -30,5 +30,8 @@ void Simulation::run_simulation()
     final_state[4] = 165.0;
     final_state[5] = 165.0;
 
-    planner.solve(initial_state, final_state, path);
+    RCLCPP_INFO(this->get_logger(), "Initializing the solver");
+
+    //planner.solve(initial_state, final_state, path);
+    planner.solve_with_moveit(initial_state, final_state);
 }
