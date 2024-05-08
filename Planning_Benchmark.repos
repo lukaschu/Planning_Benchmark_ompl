@@ -1,0 +1,4 @@
+repositories:
+  ur_10e_sim_environment:
+    type: git
+    url: https://github.com/lukaschu/ur10e_simulation_environment

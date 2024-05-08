@@ -8,6 +8,9 @@ Planning::Planning()
 {   
     RCLCPP_INFO(this->get_logger(), "planning constructor running");
 
+    // Some information about the robot
+    //RCLCPP_INFO(this->get_logger(), move_group_interface_);
+
     // Get params
     this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
     get_parameter("solver", solver_);
@@ -277,18 +280,20 @@ void Planning::solve_with_moveit(std::vector<double> initial_state, std::vector<
     auto const target_pose = []{
         geometry_msgs::msg::Pose msg;
         msg.orientation.w = 1.0;
-        msg.position.x = 0.28;
-        msg.position.y = -0.2;
-        msg.position.z = 0.5;
+        msg.position.x = 0.35;
+        msg.position.y = 0.4;
+        msg.position.z = 0.8;
         return msg;
     }();
 
-    // // Apply target to move_group_interface
+    // Apply target to move_group_interface
+    
     move_group_interface_.setPoseTarget(target_pose);
 
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     bool success = (move_group_interface_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
+    //RCLCPP_INFO(this->get_logger(), plan);
 
     // // Execute the plan
     if(success) {
