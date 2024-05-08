@@ -43,17 +43,20 @@ The simulation is originally taken from https://github.com/UniversalRobots/Unive
    ```
 4. Run simulation with moveit geometric planner
    ```
-   ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py
+   ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py ur_type:=ur10e
    ```
    In rviz you can now choose a desired pose and apply the plan and execute button in the bottom left
 5. Run simulation with ompl planner
    ```
-   ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py
+   ros2 launch ur_simulation_gazebo ur_sim_moveit.launch.py ur_type:=ur10e
    ```
    Now run the ompl planner
    ```
    ros2 launch benchmark_planning simulation_launch.py
    ```
+   > **NOTE:** You can combine point 4. and 5. Meaning that you can first plan using moveit geometric planners
+   > using the provided rviz interface, and then our planner.
+   >
    
    
 
