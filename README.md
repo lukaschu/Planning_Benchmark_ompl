@@ -23,12 +23,12 @@ The simulation is originally taken from https://github.com/UniversalRobots/Unive
    
    Clone the repo
    ```
-   git clone git@github.com:lukaschu/Planning_Benchmark.git
+   git clone git@github.com:lukaschu/Planning_Benchmark_ompl.git
    ```
    
    Use vcs to import the necessary repos (Not tested yet)
    ```
-   vcs import src --input src/Planning_Benchmark/Planning_Benchmark.repos 
+   vcs import src --input src/Planning_Benchmark_ompl/Planning_Benchmark.repos 
    ```
    Install all rosdependencies
    ```
