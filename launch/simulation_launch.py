@@ -29,7 +29,7 @@ def launch_setup(context, *args, **kwargs):
     motion_config_path = os.path.join(
         get_package_share_directory('benchmark_planning'),
         'config',
-        f'moveit_py.yaml'
+        f'moveit.yaml'
     )
 
     with open(motion_config_path, 'r') as config_file:
