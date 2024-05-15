@@ -25,6 +25,11 @@ Planning::Planning()
 
     // DONE DEBUG
 
+    // initialize the scene (needed for collision checking)
+    robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
+    const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
+    planning_scene_ = std::make_shared<planning_scene::PlanningScene>(kinematic_model);
+
     // Get params
     this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
     get_parameter("solver", solver_);
@@ -153,10 +158,38 @@ bool Planning::isStateValid(const oc::SpaceInformation *si, const ob::State *sta
     bool withinbounds = si->satisfiesBounds(state);
     if(withinbounds)
     {   
-        return true;
+        // give current state the values from *state
+        double sample1 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0] / 180 * pi_;
+        double sample2 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1] / 180 * pi_;
+        double sample3 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[2] / 180 * pi_;
+        double sample4 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[3] / 180 * pi_;
+        double sample5 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[4] / 180 * pi_;
+        double sample6 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[5] / 180 * pi_;
+
+        std::vector<double> sample_vec{sample1, sample2, sample3, sample4, sample5, sample6};
+
+        moveit::core::RobotState& sampled_state = planning_scene_->getCurrentStateNonConst();
+        sampled_state.setVariablePositions(sample_vec); // we pass it the current state
+
+        collision_detection::CollisionRequest collision_request;
+        collision_detection::CollisionResult collision_result;
+        collision_result.clear();
+        planning_scene_->checkCollision(collision_request, collision_result, sampled_state);
+
+        if(collision_result.collision) // we have collision
+        {
+            std::cerr << "collision" << std::endl;
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
+
     else
-    {
+    {   
+        std::cerr << "out of bounds" << std::endl;
         return false;
     }
 }   
@@ -215,8 +248,37 @@ Function that gets the scenario and loads it in
 Can subsequently be used for initialization of collision scene
 */
 void Planning::load_scenario()
-{
-    
+{   
+    /*
+    const auto collision_object = [frame_id = move_group_interface_.getPlanningFrame()] {
+    moveit_msgs::msg::CollisionObject collision_object;
+    collision_object.header.frame_id = frame_id;
+    collision_object.id = "box1";
+    shape_msgs::msg::SolidPrimitive primitive;
+
+    // Define the size of the box in meters
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[primitive.BOX_X] = 0.5;
+    primitive.dimensions[primitive.BOX_Y] = 0.4;
+    primitive.dimensions[primitive.BOX_Z] = 0.7;
+
+    // Define the pose of the box (relative to the frame_id)
+    geometry_msgs::msg::Pose box_pose;
+    box_pose.orientation.w = 1.0;
+    box_pose.position.x = 0.4;
+    box_pose.position.y = 0.2;
+    box_pose.position.z = 0.25;
+
+    collision_object.primitives.push_back(primitive);
+    collision_object.primitive_poses.push_back(box_pose);
+    collision_object.operation = collision_object.ADD;
+
+    return collision_object;
+  }();
+
+  planning_scene_.applyCollisionObject(collision_object);
+  */
 }
 
 /*
@@ -424,7 +486,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 }
 
 
-void Planning::solve_with_moveit(std::vector<double> initial_state, std::vector<double> final_state)
+void Planning::solve_with_moveit()
 {
     
     auto const target_pose = []{
@@ -445,7 +507,7 @@ void Planning::solve_with_moveit(std::vector<double> initial_state, std::vector<
     bool success = (move_group_interface_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
     // DEBUG
-    //debug_publisher_->publish(plan.start_state);
+    // debug_publisher_->publish(plan.start_state);
     // DONE DEBUG
 
     // Execute the plan

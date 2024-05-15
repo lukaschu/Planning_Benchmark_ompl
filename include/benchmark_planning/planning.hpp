@@ -27,6 +27,11 @@
 #include <ompl/control/spaces/RealVectorControlSpace.h>
 
 #include <moveit/move_group_interface/move_group_interface.h>
+//#include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <moveit/planning_scene/planning_scene.h>
+#include <moveit/collision_detection/collision_common.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+
 using moveit::planning_interface::MoveGroupInterface;
 
 #include <moveit_msgs/msg/robot_trajectory.h>
@@ -42,12 +47,12 @@ class Planning : public rclcpp::Node
 {
 public:
     Planning();
-    static bool isStateValid(const oc::SpaceInformation *si, const ob::State *state);
+    bool isStateValid(const oc::SpaceInformation *si, const ob::State *state);
     static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end);
     void load_scenario();
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state);
     void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path);
-    void solve_with_moveit(std::vector<double> initial_state, std::vector<double> final_state);
+    void solve_with_moveit();
     MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start);
 
     rclcpp::Publisher<moveit_msgs::msg::RobotState>::SharedPtr debug_publisher_; // Publisher
@@ -59,6 +64,7 @@ private:
     std::string solver_; // Defines the sampling algo. that is used (RRT*, Kpiece ....)
     MoveGroupInterface move_group_interface_;
     const double pi_ = 3.14159;
+    std::shared_ptr<planning_scene::PlanningScene> planning_scene_;
 };
 
 #endif
