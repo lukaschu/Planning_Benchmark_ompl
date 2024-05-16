@@ -2,7 +2,7 @@
 #include "benchmark_planning/utils.hpp"
 
 const std::string MOVE_GROUP = "ur_manipulator";
-const double PROP_STEPSIZE = 0.2;
+const double PROP_STEPSIZE = 0.1;
 using MyDuration = std::chrono::duration<double>;
 
 Planning::Planning()
@@ -30,6 +30,9 @@ Planning::Planning()
     const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
     planning_scene_ = std::make_shared<planning_scene::PlanningScene>(kinematic_model);
 
+    // Initialized the scene interface (needed for visualization)
+    planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>();
+
     // Get params
     this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
     get_parameter("solver", solver_);
@@ -41,8 +44,8 @@ Planning::Planning()
     auto velocity = std::make_shared<ob::RealVectorStateSpace>(6);
     auto time = std::make_shared<ob::TimeStateSpace>();
 
-    space_->addSubspace(position, 1.0);
-    space_->addSubspace(velocity, 0);
+    space_->addSubspace(position, 0.9);
+    space_->addSubspace(velocity, 0.1);
     space_->addSubspace(time, 0);  
 
     /*
@@ -178,7 +181,6 @@ bool Planning::isStateValid(const oc::SpaceInformation *si, const ob::State *sta
 
         if(collision_result.collision) // we have collision
         {
-            std::cerr << "collision" << std::endl;
             return false;
         }
         else
@@ -189,7 +191,6 @@ bool Planning::isStateValid(const oc::SpaceInformation *si, const ob::State *sta
 
     else
     {   
-        std::cerr << "out of bounds" << std::endl;
         return false;
     }
 }   
@@ -249,36 +250,87 @@ Can subsequently be used for initialization of collision scene
 */
 void Planning::load_scenario()
 {   
-    /*
-    const auto collision_object = [frame_id = move_group_interface_.getPlanningFrame()] {
-    moveit_msgs::msg::CollisionObject collision_object;
-    collision_object.header.frame_id = frame_id;
-    collision_object.id = "box1";
-    shape_msgs::msg::SolidPrimitive primitive;
+    // Define the objects
+    moveit_msgs::msg::CollisionObject collision_object1;
+    collision_object1.id = "box";
 
-    // Define the size of the box in meters
-    primitive.type = primitive.BOX;
-    primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.BOX_X] = 0.5;
-    primitive.dimensions[primitive.BOX_Y] = 0.4;
-    primitive.dimensions[primitive.BOX_Z] = 0.7;
+    moveit_msgs::msg::CollisionObject collision_object2;
+    collision_object2.id = "sphere";
 
-    // Define the pose of the box (relative to the frame_id)
-    geometry_msgs::msg::Pose box_pose;
-    box_pose.orientation.w = 1.0;
-    box_pose.position.x = 0.4;
-    box_pose.position.y = 0.2;
-    box_pose.position.z = 0.25;
+    /* A default pose */
+    geometry_msgs::msg::Pose pose1;
+    pose1.position.x = 0.0;
+    pose1.position.y = 0.0;
+    pose1.position.z = 1.85;
+    pose1.orientation.w = 1.0;
 
-    collision_object.primitives.push_back(primitive);
-    collision_object.primitive_poses.push_back(box_pose);
-    collision_object.operation = collision_object.ADD;
+    /* A default pose */
+    geometry_msgs::msg::Pose pose2;
+    pose2.position.x = -1.0;
+    pose2.position.y = 1.0;
+    pose2.position.z = 0.0;
+    pose2.orientation.w = 1.0;
 
-    return collision_object;
-  }();
+    /* Define a box to be attached */
+    shape_msgs::msg::SolidPrimitive primitive1;
+    primitive1.type = primitive1.BOX;
+    primitive1.dimensions.resize(3);
+    primitive1.dimensions[0] = 0.5;
+    primitive1.dimensions[1] = 0.5;
+    primitive1.dimensions[2] = 0.5;
 
-  planning_scene_.applyCollisionObject(collision_object);
-  */
+    /* Define a box to be attached */
+    shape_msgs::msg::SolidPrimitive primitive2;
+    primitive2.type = primitive2.SPHERE;
+    primitive2.dimensions.resize(3);
+    primitive2.dimensions[0] = 0.5;
+    primitive2.dimensions[1] = 0.5;
+    primitive2.dimensions[2] = 0.5;
+
+    collision_object1.primitives.push_back(primitive1);
+    collision_object1.primitive_poses.push_back(pose1);
+
+    collision_object2.primitives.push_back(primitive2);
+    collision_object2.primitive_poses.push_back(pose2);
+
+    // Defining add operation
+    collision_object1.operation = collision_object1.ADD;
+
+    // Defining add operation
+    collision_object2.operation = collision_object2.ADD;
+
+    // give th object a valid frame
+    collision_object1.header.frame_id = "base_link";
+
+    // give th object a valid frame
+    collision_object2.header.frame_id = "base_link";
+
+
+    // Fabians method (add object to planning_scene_ directly)
+
+    planning_scene_->processCollisionObjectMsg(collision_object1);
+    planning_scene_->processCollisionObjectMsg(collision_object2);
+    planning_scene_->printKnownObjects(std::cerr);
+
+    // add object to interface for visualization
+    planning_scene_interface_->applyCollisionObject(collision_object1);
+    planning_scene_interface_->applyCollisionObject(collision_object2);
+
+    // DEBUG 
+
+    std::vector<double> sample_vec{0, -1.57, 0, -1.57, 0, 0};
+
+    moveit::core::RobotState& sampled_state = planning_scene_->getCurrentStateNonConst();
+    sampled_state.setVariablePositions(sample_vec); // we pass it the current state
+
+    collision_detection::CollisionRequest collision_request;
+    collision_detection::CollisionResult collision_result;
+    collision_result.clear();
+    planning_scene_->checkCollision(collision_request, collision_result, sampled_state);
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "Current state is " << (collision_result.collision ? "in" : "not in")
+                                                       << " collision");
+    // END DEBUG
 }
 
 /*
@@ -437,7 +489,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     // Problem definition
     auto pdef = std::make_shared<ob::ProblemDefinition>(si_);
-    pdef->setStartAndGoalStates(initial, final, 4);
+    pdef->setStartAndGoalStates(initial, final, 6);
 
     // Defining the planner (EST, RRT, KPIECE, PDST) (is not very smooth but don't know how else)
     using PLANNER = oc::RRT;
@@ -446,7 +498,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(0.1);
+    planner->as<PLANNER>()->setGoalBias(0.2);
     
     // Uncomment if RRT
     // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
@@ -462,7 +514,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "starting");
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(10.0);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(300.0);
     auto end = std::chrono::steady_clock::now(); // timer end
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 

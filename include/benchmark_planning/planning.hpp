@@ -27,7 +27,7 @@
 #include <ompl/control/spaces/RealVectorControlSpace.h>
 
 #include <moveit/move_group_interface/move_group_interface.h>
-//#include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -54,6 +54,7 @@ public:
     void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path);
     void solve_with_moveit();
     MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start);
+    //rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr planning_scene_diff_publisher_; // publisher for collision scene
 
     rclcpp::Publisher<moveit_msgs::msg::RobotState>::SharedPtr debug_publisher_; // Publisher
 
@@ -64,7 +65,8 @@ private:
     std::string solver_; // Defines the sampling algo. that is used (RRT*, Kpiece ....)
     MoveGroupInterface move_group_interface_;
     const double pi_ = 3.14159;
-    std::shared_ptr<planning_scene::PlanningScene> planning_scene_;
+    std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking
+    std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_; // for visualization
 };
 
 #endif
