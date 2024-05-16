@@ -307,7 +307,6 @@ void Planning::load_scenario()
 
 
     // Fabians method (add object to planning_scene_ directly)
-
     planning_scene_->processCollisionObjectMsg(collision_object1);
     planning_scene_->processCollisionObjectMsg(collision_object2);
     planning_scene_->printKnownObjects(std::cerr);
@@ -331,6 +330,18 @@ void Planning::load_scenario()
     RCLCPP_INFO_STREAM(this->get_logger(), "Current state is " << (collision_result.collision ? "in" : "not in")
                                                        << " collision");
     // END DEBUG
+
+    // Try to move the obstacles
+
+    collision_object2.operation = collision_object2.MOVE;
+    pose2.position.x = -2.0;
+    pose2.position.y = 0.5;
+    pose2.position.z = 0.0;
+    pose2.orientation.w = 1.0;
+
+    collision_object2.primitive_poses.push_back(pose2);
+    planning_scene_->processCollisionObjectMsg(collision_object2);
+    planning_scene_interface_->applyCollisionObject(collision_object2);
 }
 
 /*
