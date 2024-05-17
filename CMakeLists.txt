@@ -24,7 +24,7 @@ include_directories(
 
 add_executable(simulation src/simulation_main.cpp)
 
-add_library(${PROJECT_NAME}_NODE src/planning.cpp src/simulation.cpp src/utils.cpp)
+add_library(${PROJECT_NAME}_NODE src/planning.cpp src/simulation.cpp src/utils.cpp src/collision_checker.cpp)
 
 ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface moveit_msgs)
 

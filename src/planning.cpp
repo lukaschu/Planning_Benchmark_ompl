@@ -1,5 +1,6 @@
 #include "benchmark_planning/planning.hpp"
 #include "benchmark_planning/utils.hpp"
+//#include "benchmark_planning/collision_checker.hpp"
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.1;
@@ -10,28 +11,10 @@ Planning::Planning()
 {   
     RCLCPP_INFO(this->get_logger(), "planning constructor running");
 
-    // START DEBUG
-
-    debug_publisher_ = this->create_publisher<moveit_msgs::msg::RobotState>("robot_trajectory", 10);
-
-    //std::cerr<< move_group_interface_.getCurrentJointValues()[0] <<std::endl;
-    //RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "current state: " << *move_group_interface_.getCurrentState());
-    //RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "First joint value " << move_group_interface_.getCurrentJointValues()[0]);
-    // RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Second joint value " << move_group_interface_.getCurrentJointValues()[1]);
-    // RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Third joint value " << move_group_interface_.getCurrentJointValues()[2]);
-    // RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Fourth joint value " << move_group_interface_.getCurrentJointValues()[3]);
-    // RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Fifth joint value " << move_group_interface_.getCurrentJointValues()[4]);
-    // RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Sixth joint value " << move_group_interface_.getCurrentJointValues()[5]);
-
-    // DONE DEBUG
-
-    // initialize the scene (needed for collision checking)
+    // initialize the collision checker 
     robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
     const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
-    planning_scene_ = std::make_shared<planning_scene::PlanningScene>(kinematic_model);
-
-    // Initialized the scene interface (needed for visualization)
-    planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>();
+    collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model);
 
     // Get params
     this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
@@ -138,7 +121,7 @@ Planning::Planning()
     si_ = std::make_shared<oc::SpaceInformation>(space_, ctrl_space_);
 
     // Define collsion checker
-    si_->setStateValidityChecker([this](const ob::State *state) { return isStateValid(si_.get(), state); });
+    si_->setStateValidityChecker([this](const ob::State *state) { return collision_checker_->is_state_valid(si_.get(), state); });
 
 
     // Define motion specific constraints
@@ -151,49 +134,6 @@ Planning::Planning()
 
     si_->setup();
 }
-
-/*
-Function that checks if a state given as (q,q_dot,t) /in R^7, is a valid state  
-*/
-bool Planning::isStateValid(const oc::SpaceInformation *si, const ob::State *state) 
-{   
-    // Check if state within bounds
-    bool withinbounds = si->satisfiesBounds(state);
-    if(withinbounds)
-    {   
-        // give current state the values from *state
-        double sample1 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0] / 180 * pi_;
-        double sample2 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1] / 180 * pi_;
-        double sample3 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[2] / 180 * pi_;
-        double sample4 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[3] / 180 * pi_;
-        double sample5 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[4] / 180 * pi_;
-        double sample6 = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[5] / 180 * pi_;
-
-        std::vector<double> sample_vec{sample1, sample2, sample3, sample4, sample5, sample6};
-
-        moveit::core::RobotState& sampled_state = planning_scene_->getCurrentStateNonConst();
-        sampled_state.setVariablePositions(sample_vec); // we pass it the current state
-
-        collision_detection::CollisionRequest collision_request;
-        collision_detection::CollisionResult collision_result;
-        collision_result.clear();
-        planning_scene_->checkCollision(collision_request, collision_result, sampled_state);
-
-        if(collision_result.collision) // we have collision
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
-
-    else
-    {   
-        return false;
-    }
-}   
 
 /*
 Function that establishes the double integrator dynamics 
@@ -248,100 +188,10 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
 Function that gets the scenario and loads it in
 Can subsequently be used for initialization of collision scene
 */
-void Planning::load_scenario()
+void Planning::call_scenario_loader()
 {   
-    // Define the objects
-    moveit_msgs::msg::CollisionObject collision_object1;
-    collision_object1.id = "box";
-
-    moveit_msgs::msg::CollisionObject collision_object2;
-    collision_object2.id = "sphere";
-
-    /* A default pose */
-    geometry_msgs::msg::Pose pose1;
-    pose1.position.x = 0.0;
-    pose1.position.y = 0.0;
-    pose1.position.z = 1.85;
-    pose1.orientation.w = 1.0;
-
-    /* A default pose */
-    geometry_msgs::msg::Pose pose2;
-    pose2.position.x = -1.0;
-    pose2.position.y = 1.0;
-    pose2.position.z = 0.0;
-    pose2.orientation.w = 1.0;
-
-    /* Define a box to be attached */
-    shape_msgs::msg::SolidPrimitive primitive1;
-    primitive1.type = primitive1.BOX;
-    primitive1.dimensions.resize(3);
-    primitive1.dimensions[0] = 0.5;
-    primitive1.dimensions[1] = 0.5;
-    primitive1.dimensions[2] = 0.5;
-
-    /* Define a box to be attached */
-    shape_msgs::msg::SolidPrimitive primitive2;
-    primitive2.type = primitive2.SPHERE;
-    primitive2.dimensions.resize(3);
-    primitive2.dimensions[0] = 0.5;
-    primitive2.dimensions[1] = 0.5;
-    primitive2.dimensions[2] = 0.5;
-
-    collision_object1.primitives.push_back(primitive1);
-    collision_object1.primitive_poses.push_back(pose1);
-
-    collision_object2.primitives.push_back(primitive2);
-    collision_object2.primitive_poses.push_back(pose2);
-
-    // Defining add operation
-    collision_object1.operation = collision_object1.ADD;
-
-    // Defining add operation
-    collision_object2.operation = collision_object2.ADD;
-
-    // give th object a valid frame
-    collision_object1.header.frame_id = "base_link";
-
-    // give th object a valid frame
-    collision_object2.header.frame_id = "base_link";
-
-
-    // Fabians method (add object to planning_scene_ directly)
-    planning_scene_->processCollisionObjectMsg(collision_object1);
-    planning_scene_->processCollisionObjectMsg(collision_object2);
-    planning_scene_->printKnownObjects(std::cerr);
-
-    // add object to interface for visualization
-    planning_scene_interface_->applyCollisionObject(collision_object1);
-    planning_scene_interface_->applyCollisionObject(collision_object2);
-
-    // DEBUG 
-
-    std::vector<double> sample_vec{0, -1.57, 0, -1.57, 0, 0};
-
-    moveit::core::RobotState& sampled_state = planning_scene_->getCurrentStateNonConst();
-    sampled_state.setVariablePositions(sample_vec); // we pass it the current state
-
-    collision_detection::CollisionRequest collision_request;
-    collision_detection::CollisionResult collision_result;
-    collision_result.clear();
-    planning_scene_->checkCollision(collision_request, collision_result, sampled_state);
-
-    RCLCPP_INFO_STREAM(this->get_logger(), "Current state is " << (collision_result.collision ? "in" : "not in")
-                                                       << " collision");
-    // END DEBUG
-
-    // Try to move the obstacles
-
-    collision_object2.operation = collision_object2.MOVE;
-    pose2.position.x = -2.0;
-    pose2.position.y = 0.5;
-    pose2.position.z = 0.0;
-    pose2.orientation.w = 1.0;
-
-    collision_object2.primitive_poses.push_back(pose2);
-    planning_scene_->processCollisionObjectMsg(collision_object2);
-    planning_scene_interface_->applyCollisionObject(collision_object2);
+    // load the scenario at time zero
+    collision_checker_->load_scenario(0);
 }
 
 /*
@@ -525,7 +375,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "starting");
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(300.0);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(20.0);
     auto end = std::chrono::steady_clock::now(); // timer end
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -542,8 +392,12 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
         // We adjust the format from ob::PathPtr to MoveGroupInterface::Plan 
         MoveGroupInterface::Plan moveit_plan = recover_moveit_path(path, duration.count(), pdef->getStartState(0));
 
-        // Execute the traj on the robot
+        start = std::chrono::steady_clock::now(); // timer start
+        // Execute the traj on the robot (and simultanously start the simulation)
         move_group_interface_.execute(moveit_plan);
+        end = std::chrono::steady_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cerr << "executed in " << duration.count() << " milliseconds" << std::endl;
     }
     planner->clear();
 }

@@ -4,7 +4,7 @@ Simulation::Simulation()
 : Node("simulator")
 {   
     // Need to define the obstacle configs. then load them in in load scenario
-    planner.load_scenario(); // mostly for obstacles
+    planner.call_scenario_loader(); // mostly for obstacles
 }
 
 /*

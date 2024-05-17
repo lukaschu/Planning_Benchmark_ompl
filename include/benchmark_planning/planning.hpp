@@ -8,6 +8,9 @@
 #include <vector>
 #include <iostream>
 
+#include "benchmark_planning/collision_checker.hpp"
+
+
 #include "rclcpp/rclcpp.hpp"
 #include <ompl/base/StateSpace.h>
 #include <ompl/base/ScopedState.h>
@@ -47,9 +50,8 @@ class Planning : public rclcpp::Node
 {
 public:
     Planning();
-    bool isStateValid(const oc::SpaceInformation *si, const ob::State *state);
     static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end);
-    void load_scenario();
+    void call_scenario_loader();
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state);
     void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path);
     void solve_with_moveit();
@@ -65,8 +67,7 @@ private:
     std::string solver_; // Defines the sampling algo. that is used (RRT*, Kpiece ....)
     MoveGroupInterface move_group_interface_;
     const double pi_ = 3.14159;
-    std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking
-    std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_; // for visualization
+    std::shared_ptr<Collision_Checker> collision_checker_;
 };
 
 #endif
