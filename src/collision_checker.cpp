@@ -6,6 +6,7 @@ Collision_Checker::Collision_Checker(const moveit::core::RobotModelPtr& kinemati
     // Initialized the scene interface (needed for visualization)
     planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>();
     planning_scene_ = std::make_shared<planning_scene::PlanningScene>(kinematic_model);
+    planning_scene_->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
 }
 
 /*

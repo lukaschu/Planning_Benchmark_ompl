@@ -7,6 +7,7 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/collision_detection_bullet/collision_detector_bullet_plugin_loader.h>
 
 #include <ompl/base/StateSpace.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
