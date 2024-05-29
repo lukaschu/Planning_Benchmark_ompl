@@ -11,6 +11,10 @@ Planning::Planning()
 {   
     RCLCPP_INFO(this->get_logger(), "planning constructor running");
 
+    // Debug
+    debug_publisher_ = this->create_publisher<moveit_msgs::msg::RobotTrajectory>("robot_trajectory", 10);
+    // End Debug
+
     // initialize the collision checker 
     robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
     const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
@@ -190,8 +194,11 @@ Can subsequently be used for initialization of collision scene
 */
 void Planning::call_scenario_loader()
 {   
-    // load the scenario at time zero
-    collision_checker_->load_scenario(0);
+    // load the scenario
+    collision_checker_->load_scenario();
+
+    // load the scene at time 0 (not necessary)
+    // collision_checker_->load_scene(0);
 }
 
 /*
@@ -307,8 +314,15 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
             point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
         }
 
-        // Multiply i by time to get the result in seconds
-        MyDuration result = MyDuration(i) * PROP_STEPSIZE;
+        // Small error here. The size is equal to the amount of different accelerations.
+        // But sometimes the same acceleration is applied for several timesteps (f.e 0.5s)
+        // this needs to be included!!!
+
+        double exec_time = compound_placeholder->as<ob::TimeStateSpace::StateType>(2)->position;
+
+        //std::cerr<< "time to input : " << exec_time << std::endl;
+
+        MyDuration result = MyDuration(exec_time);
 
         // Convert the duration to seconds
         double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(result).count();
@@ -330,7 +344,6 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
     plan.trajectory = robot_trajectory;
 
     return plan;
-
 }
 
 /*
@@ -371,11 +384,10 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     //pdef->print();
 
     auto start = std::chrono::steady_clock::now(); // timer start
-    // Solve the problem (max t seconds)
 
     RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "starting");
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(20.0);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(500.0);
     auto end = std::chrono::steady_clock::now(); // timer end
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -384,7 +396,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     {   
         std::cerr << "got solution in: " << duration.count() / 1000 << " seconds" << std::endl;
         path = pdef->getSolutionPath();
-        std::stringstream pathStream;
+        //std::stringstream pathStream;
 
         //path->print(pathStream);
         //std::cerr << path->getStates() << std::endl;
@@ -392,12 +404,18 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
         // We adjust the format from ob::PathPtr to MoveGroupInterface::Plan 
         MoveGroupInterface::Plan moveit_plan = recover_moveit_path(path, duration.count(), pdef->getStartState(0));
 
-        start = std::chrono::steady_clock::now(); // timer start
-        // Execute the traj on the robot (and simultanously start the simulation)
-        move_group_interface_.execute(moveit_plan);
-        end = std::chrono::steady_clock::now();
+        // Debug
+        debug_publisher_->publish(moveit_plan.trajectory);
+        // End Debug
+
+        //start = std::chrono::steady_clock::now(); // timer start
+        // Execute the traj on the robot (and simultanously start the simulation TODO !!!!1
+        move_group_interface_.asyncExecute(moveit_plan);
+        //end = std::chrono::steady_clock::now();
+        collision_checker_->simulate_obstacles(); // moves the obstacles 
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        std::cerr << "executed in " << duration.count() << " milliseconds" << std::endl;
+
+        //std::cerr << "executed in " << duration.count() << " milliseconds" << std::endl;
     }
     planner->clear();
 }
@@ -424,7 +442,7 @@ void Planning::solve_with_moveit()
     bool success = (move_group_interface_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
     // DEBUG
-    // debug_publisher_->publish(plan.start_state);
+    debug_publisher_->publish(plan.trajectory);
     // DONE DEBUG
 
     // Execute the plan

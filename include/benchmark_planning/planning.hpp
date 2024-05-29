@@ -58,7 +58,7 @@ public:
     MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start);
     //rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr planning_scene_diff_publisher_; // publisher for collision scene
 
-    rclcpp::Publisher<moveit_msgs::msg::RobotState>::SharedPtr debug_publisher_; // Publisher
+    rclcpp::Publisher<moveit_msgs::msg::RobotTrajectory>::SharedPtr debug_publisher_; // Publisher
 
 private:
     std::shared_ptr<ob::CompoundStateSpace> space_; // defines config. space (q,q_dot)

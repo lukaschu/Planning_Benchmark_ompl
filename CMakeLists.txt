@@ -14,11 +14,14 @@ find_package(ompl REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(shape_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 include_directories(
   include
   /opt/ros/humble/include
   /opt/ros/humble/include/ompl-1.6
+  ${YAML_CPP_INCLUDE_DIRS}
   ${colcon_INCLUDE_DIRS}
 )
 
@@ -26,7 +29,7 @@ add_executable(simulation src/simulation_main.cpp)
 
 add_library(${PROJECT_NAME}_NODE src/planning.cpp src/simulation.cpp src/utils.cpp src/collision_checker.cpp)
 
-ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface moveit_msgs)
+ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface moveit_msgs shape_msgs yaml-cpp)
 
 install(DIRECTORY
   launch
@@ -44,9 +47,10 @@ target_include_directories(${PROJECT_NAME}_NODE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     ${Eigen3_INCLUDE_DIRS}
+    ${YAML_CPP_INCLUDE_DIRS}
     )
 
-target_link_libraries(${PROJECT_NAME}_NODE ${OMPL_LIBRARIES} Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME}_NODE ${OMPL_LIBRARIES} Eigen3::Eigen yaml-cpp)
 
 target_link_libraries(simulation ${PROJECT_NAME}_NODE)
 
