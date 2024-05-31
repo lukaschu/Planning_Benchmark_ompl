@@ -50,26 +50,26 @@ Planning::Planning()
     ob::RealVectorBounds velocityBounds(6);
     // 1.
     positionBounds.setLow(0, -190);
-    positionBounds.setHigh(0, 0);
+    positionBounds.setHigh(0, 190);
     velocityBounds.setLow(0, -90);
     velocityBounds.setHigh(0,90);
     // 2.
     positionBounds.setLow(1,-150);
-    positionBounds.setHigh(1,-90);
+    positionBounds.setHigh(1,150);
     velocityBounds.setLow(1, -45);
     velocityBounds.setHigh(1, 45);
     // 3.
     positionBounds.setLow(2, -160);
-    positionBounds.setHigh(2, 0); // was -45
+    positionBounds.setHigh(2, 90); // was -45
     velocityBounds.setLow(2, -45);
     velocityBounds.setHigh(2, 45);
     // 4.
-    positionBounds.setLow(3, -90); // was -45
-    positionBounds.setHigh(3, 90);
+    positionBounds.setLow(3, -120); // was -45
+    positionBounds.setHigh(3, 120);
     velocityBounds.setLow(3, -90);
     velocityBounds.setHigh(3, 90);
     // 5.
-    positionBounds.setLow(4, 0);
+    positionBounds.setLow(4, -30);
     positionBounds.setHigh(4, 180);
     velocityBounds.setLow(4, -90);
     velocityBounds.setHigh(4, 90);
