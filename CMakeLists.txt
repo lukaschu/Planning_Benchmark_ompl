@@ -15,6 +15,7 @@ find_package(Eigen3 REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 include_directories(
@@ -29,7 +30,7 @@ add_executable(simulation src/simulation_main.cpp)
 
 add_library(${PROJECT_NAME}_NODE src/planning.cpp src/simulation.cpp src/utils.cpp src/collision_checker.cpp)
 
-ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface moveit_msgs shape_msgs yaml-cpp)
+ament_target_dependencies(${PROJECT_NAME}_NODE rclcpp ompl Eigen3 moveit_ros_planning_interface moveit_msgs shape_msgs control_msgs yaml-cpp)
 
 install(DIRECTORY
   launch

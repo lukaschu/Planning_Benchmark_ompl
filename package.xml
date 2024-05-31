@@ -18,6 +18,8 @@
   <depend>moveit_msgs</depend>
   <depend>shape_msgs</depend>
   <depend>yaml-cpp</depend>
+  <depend>control_msgs</depend>
+  
 
   <export>
     <build_type>ament_cmake</build_type>
