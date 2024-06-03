@@ -3,7 +3,7 @@
 //#include "benchmark_planning/collision_checker.hpp"
 
 const std::string MOVE_GROUP = "ur_manipulator";
-const double PROP_STEPSIZE = 0.1;
+const double PROP_STEPSIZE = 0.25;
 using MyDuration = std::chrono::duration<double>;
 
 Planning::Planning()
@@ -49,35 +49,35 @@ Planning::Planning()
     ob::RealVectorBounds positionBounds(6);
     ob::RealVectorBounds velocityBounds(6);
     // 1.
-    positionBounds.setLow(0, -190);
-    positionBounds.setHigh(0, 190);
-    velocityBounds.setLow(0, -90);
-    velocityBounds.setHigh(0,90);
+    positionBounds.setLow(0, -180);
+    positionBounds.setHigh(0, 180);
+    velocityBounds.setLow(0, -180);
+    velocityBounds.setHigh(0,180);
     // 2.
-    positionBounds.setLow(1,-150);
-    positionBounds.setHigh(1,150);
-    velocityBounds.setLow(1, -45);
-    velocityBounds.setHigh(1, 45);
+    positionBounds.setLow(1,-180);
+    positionBounds.setHigh(1,180);
+    velocityBounds.setLow(1, -180);
+    velocityBounds.setHigh(1, 180);
     // 3.
-    positionBounds.setLow(2, -160);
-    positionBounds.setHigh(2, 90); // was -45
-    velocityBounds.setLow(2, -45);
-    velocityBounds.setHigh(2, 45);
+    positionBounds.setLow(2, -180);
+    positionBounds.setHigh(2, 180); // was -45
+    velocityBounds.setLow(2, -180);
+    velocityBounds.setHigh(2, 180);
     // 4.
-    positionBounds.setLow(3, -120); // was -45
-    positionBounds.setHigh(3, 120);
-    velocityBounds.setLow(3, -90);
-    velocityBounds.setHigh(3, 90);
+    positionBounds.setLow(3, -180); // was -45
+    positionBounds.setHigh(3, 180);
+    velocityBounds.setLow(3, -180);
+    velocityBounds.setHigh(3, 180);
     // 5.
-    positionBounds.setLow(4, -30);
+    positionBounds.setLow(4, -180);
     positionBounds.setHigh(4, 180);
-    velocityBounds.setLow(4, -90);
-    velocityBounds.setHigh(4, 90);
+    velocityBounds.setLow(4, -180);
+    velocityBounds.setHigh(4, 180);
     // 6.
     positionBounds.setLow(5, -180);
     positionBounds.setHigh(5, 180);
-    velocityBounds.setLow(5, -90);
-    velocityBounds.setHigh(5, 90);
+    velocityBounds.setLow(5, -180);
+    velocityBounds.setHigh(5, 180);
 
     position->setBounds(positionBounds);
     velocity->setBounds(velocityBounds);
@@ -134,7 +134,7 @@ Planning::Planning()
     // Define dynamic propagation for the system
     si_->setStatePropagator(dynamics);
     si_->setPropagationStepSize(PROP_STEPSIZE); 
-    si_->setMinMaxControlDuration(2,30);
+    si_->setMinMaxControlDuration(2,80);
 
     si_->setup();
 }
@@ -149,6 +149,13 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
                                                        v[n] = v[n-1] + dT * a[n-1]
     system input is directly set on the acceleration:  a[n] = u[n]
     */
+
+   auto normalize_angle = [](double angle) -> double {
+        angle = fmod(angle + 180.0, 360.0);
+        if (angle < 0)
+            angle += 360.0;
+        return angle - 180.0;
+    };
 
     // past state
     const auto position = start->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
@@ -167,25 +174,23 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[4] = velocity[4] + ctrl[4] * duration;
     result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(1)->values[5] = velocity[5] + ctrl[5] * duration;
     // position q1
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0] = position[0] + 
-    velocity[0] * duration + 0.5 * ctrl[0] * std::pow(duration,2); 
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0] = normalize_angle(position[0] + 
+    velocity[0] * duration + 0.5 * ctrl[0] * std::pow(duration,2)); 
     // position q2
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1] = position[1] + 
-    velocity[1] * duration + 0.5 * ctrl[1] * std::pow(duration,2);
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1] = normalize_angle(position[1] + 
+    velocity[1] * duration + 0.5 * ctrl[1] * std::pow(duration,2));
     // position q3
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[2] = position[2] + 
-    velocity[2] * duration + 0.5 * ctrl[2] * std::pow(duration,2);
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[2] = normalize_angle(position[2] + 
+    velocity[2] * duration + 0.5 * ctrl[2] * std::pow(duration,2));
     // position q4
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[3] = position[3] + 
-    velocity[3] * duration + 0.5 * ctrl[3] * std::pow(duration,2);
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[3] = normalize_angle(position[3] + 
+    velocity[3] * duration + 0.5 * ctrl[3] * std::pow(duration,2));
     // position q5
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[4] = position[4] + 
-    velocity[4] * duration + 0.5 * ctrl[4] * std::pow(duration,2);
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[4] = normalize_angle(position[4] + 
+    velocity[4] * duration + 0.5 * ctrl[4] * std::pow(duration,2));
     // position q6
-    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[5] = position[5] + 
-    velocity[5] * duration + 0.5 * ctrl[5] * std::pow(duration,2);
-
-    return;
+    result->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[5] = normalize_angle(position[5] + 
+    velocity[5] * duration + 0.5 * ctrl[5] * std::pow(duration,2));
 }
 
 /*
@@ -372,7 +377,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(0.2);
+    planner->as<PLANNER>()->setGoalBias(0.35);
     
     // Uncomment if RRT
     // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
@@ -387,7 +392,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
 
     RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "starting");
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(500.0);
+    ob::PlannerStatus solved = planner->ob::Planner::solve(800.0);
     auto end = std::chrono::steady_clock::now(); // timer end
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 

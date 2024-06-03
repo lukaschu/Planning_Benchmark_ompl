@@ -16,6 +16,7 @@ bool Collision_Checker::is_state_valid(const oc::SpaceInformation *si, const ob:
 {   
     // Check if state within bounds
     bool withinbounds = si->satisfiesBounds(state);
+
     if(withinbounds)
     {   
         // give current state the values from *state
@@ -44,11 +45,11 @@ bool Collision_Checker::is_state_valid(const oc::SpaceInformation *si, const ob:
         planning_scene_->checkCollision(collision_request, collision_result, sampled_state);
 
         if(collision_result.collision) 
-        {
+        {   
             return false; // we have collision
         }
         else
-        {
+        {   
             return true; // collision free
         }
     }
@@ -63,6 +64,8 @@ Loads in the objects contained within the scene at time t. Gets called everytime
 */
 void Collision_Checker::load_scene(double t)
 {   
+    // auto start = std::chrono::high_resolution_clock::now();
+
     // first remove all collision objects 
     planning_scene_->removeAllCollisionObjects();
 
@@ -177,6 +180,10 @@ void Collision_Checker::load_scene(double t)
         }
 
     }
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end- start);
+
+    // std::cerr << duration.count() << std::endl;
 }
 
 /*
@@ -188,77 +195,96 @@ void Collision_Checker::load_scenario()
 {   
     // Retrieve the package share directory path
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
+    std::filesystem::path Package_share_dir{package_share_directory};
 
-    // Construct the full path to the mesh file using package URI scheme
-    std::string mesh_path = "package://benchmark_planning/config/obstacles/obstacle_00/mesh.ply";
-    // Normal path to the trajectory information
-    std::string mesh_trajectory_path =  package_share_directory + "/config/obstacles/obstacle_00/trajectory.yaml"; 
+    std::vector<std::string> primitive_paths;
+    std::vector<std::string> mesh_paths;
 
-    // Construct the full path to the primitive file using package URI scheme
-    std::string primitive_path = package_share_directory + "/config/obstacles/obstacle_01/shape.yaml";
-    // Normal path to the trajectory information
-    std::string primitive_trajectory_path =  package_share_directory + "/config/obstacles/obstacle_01/trajectory.yaml"; 
+    // scenario_1 should be chosen
+    for (auto const &dir_entry : std::filesystem::directory_iterator{std::filesystem::path(Package_share_dir / "config/scenarios/scenario_1/obstacles")})
+    {
+        std::filesystem::path mesh_path_placeholder = dir_entry.path() / "mesh.ply";
+
+        if(std::filesystem::exists(mesh_path_placeholder))
+        {   
+            mesh_paths.push_back(dir_entry.path());
+        }
+        else
+        {   
+            primitive_paths.push_back(dir_entry.path());
+        }
+    }
 
     // FIRST THE MESH
-
-    // This part loads in the mesh and saves it to the member vector msg_mesh_
-    // I dont specifically understand the details of each line 
-    shapes::ShapeMsg mesh_msg;
-    shapes::Mesh *mesh = shapes::createMeshFromResource(mesh_path); // maybe with .get()
-    shapes::constructMsgFromShape(mesh, mesh_msg);
-    msg_mesh_.push_back(std::make_shared<shape_msgs::msg::Mesh>(boost::get<shape_msgs::msg::Mesh>(mesh_msg)));
-
-    // THE  CORRESPONDING TRAJECTORY AND THE FRAME
-
-    // Retrieve the trajectory for the dynamic obstacles
-    std::filesystem::path MeshtrajectoryPath{mesh_trajectory_path};
-    YAML::Node trajectoryNode_mesh = YAML::LoadFile(MeshtrajectoryPath);
-    std::string frame_placeholder_mesh = trajectoryNode_mesh["frame"].as<std::string>();
-    std::vector<std::array<double, 7>> trajectory_placeholder_mesh = trajectoryNode_mesh["trajectory"].as<std::vector<std::array<double, 7>>>();
-
-    mesh_trajectoryFrame_.push_back(std::make_shared<std::string>(frame_placeholder_mesh));
-    mesh_trajectory_.push_back(std::make_shared<std::vector<std::array<double, 7>>>(trajectory_placeholder_mesh));
-
-    // as a last step we recover the timestep which lies in between poses of the obstacles
-    // if the obstacle is static we set it to zero!!
-    if(trajectory_placeholder_mesh.size() > 1)
+    for(unsigned int i = 0; i < mesh_paths.size(); ++i)
     {
-        mesh_collision_object_timeinterval_.push_back(trajectory_placeholder_mesh[1][6]); // dynamic obstacle
-    }
-    else 
-    {
-        mesh_collision_object_timeinterval_.push_back(0); // static obstacle
-    }
+        //std::string mesh_path = mesh_paths[i] + "/mesh.ply";
+        std::string mesh_path = "package://benchmark_planning/config/obstacles/obstacle_00/mesh.ply";
+        std::string mesh_trajectory_path = mesh_paths[i] + "/trajectory.yaml";
 
+        // This part loads in the mesh and saves it to the member vector msg_mesh_
+        // I dont specifically understand the details of each line 
+        shapes::ShapeMsg mesh_msg;
+        shapes::Mesh *mesh = shapes::createMeshFromResource(mesh_path); 
+        shapes::constructMsgFromShape(mesh, mesh_msg);
+        msg_mesh_.push_back(std::make_shared<shape_msgs::msg::Mesh>(boost::get<shape_msgs::msg::Mesh>(mesh_msg)));
+
+        // THE  CORRESPONDING TRAJECTORY AND THE FRAME
+
+        // Retrieve the trajectory for the dynamic obstacles
+        std::filesystem::path MeshtrajectoryPath{mesh_trajectory_path};
+        YAML::Node trajectoryNode_mesh = YAML::LoadFile(MeshtrajectoryPath);
+        std::string frame_placeholder_mesh = trajectoryNode_mesh["frame"].as<std::string>();
+        std::vector<std::array<double, 7>> trajectory_placeholder_mesh = trajectoryNode_mesh["trajectory"].as<std::vector<std::array<double, 7>>>();
+
+        mesh_trajectoryFrame_.push_back(std::make_shared<std::string>(frame_placeholder_mesh));
+        mesh_trajectory_.push_back(std::make_shared<std::vector<std::array<double, 7>>>(trajectory_placeholder_mesh));
+
+        // as a last step we recover the timestep which lies in between poses of the obstacles
+        // if the obstacle is static we set it to zero!!
+        if(trajectory_placeholder_mesh.size() > 1)
+        {
+            mesh_collision_object_timeinterval_.push_back(trajectory_placeholder_mesh[1][6]); // dynamic obstacle
+        }
+        else 
+        {
+            mesh_collision_object_timeinterval_.push_back(0); // static obstacle
+        }
+    }
 
     // SECOND THE PRIMITIVE
+    for(unsigned int i = 0; i < primitive_paths.size(); ++i)
+    {   
+        std::string primitive_path = primitive_paths[i] + "/shape.yaml";
+        std::string primitive_trajectory_path =  primitive_paths[i] + "/trajectory.yaml";
 
-    std::filesystem::path PrimitiveyPath{primitive_path};
-    YAML::Node  primitiveNode = YAML::LoadFile(PrimitiveyPath);
-    int primitive_type_placeholder = primitiveNode["type"].as<int>(); // this is the type of object we have
-    msg_primitive_.push_back(std::make_shared<int>(primitive_type_placeholder));
+        std::filesystem::path PrimitiveyPath{primitive_path};
+        YAML::Node  primitiveNode = YAML::LoadFile(PrimitiveyPath);
+        int primitive_type_placeholder = primitiveNode["type"].as<int>(); // this is the type of object we have
+        msg_primitive_.push_back(std::make_shared<int>(primitive_type_placeholder));
 
-    std::array<double, 3> primitive_dim_placeholder = primitiveNode["dimensions"].as<std::array<double, 3>>();
-    primitive_dimensions_.push_back(std::make_shared<std::array<double, 3>>(primitive_dim_placeholder));
+        std::array<double, 3> primitive_dim_placeholder = primitiveNode["dimensions"].as<std::array<double, 3>>();
+        primitive_dimensions_.push_back(std::make_shared<std::array<double, 3>>(primitive_dim_placeholder));
 
-    // THE  CORRESPONDING TRAJECTORY AND THE FRAME
+        // THE  CORRESPONDING TRAJECTORY AND THE FRAME
 
-    // Retrieve the trajectory for the dynamic obstacles
-    std::filesystem::path PrimitivetrajectoryPath{primitive_trajectory_path};
-    YAML::Node trajectoryNode_primitive = YAML::LoadFile(PrimitivetrajectoryPath);
-    std::string frame_placeholder_primitive = trajectoryNode_primitive["frame"].as<std::string>();
-    std::vector<std::array<double, 7>> trajectory_placeholder_primitive = trajectoryNode_primitive["trajectory"].as<std::vector<std::array<double, 7>>>();
+        // Retrieve the trajectory for the dynamic obstacles
+        std::filesystem::path PrimitivetrajectoryPath{primitive_trajectory_path};
+        YAML::Node trajectoryNode_primitive = YAML::LoadFile(PrimitivetrajectoryPath);
+        std::string frame_placeholder_primitive = trajectoryNode_primitive["frame"].as<std::string>();
+        std::vector<std::array<double, 7>> trajectory_placeholder_primitive = trajectoryNode_primitive["trajectory"].as<std::vector<std::array<double, 7>>>();
 
-    primitive_trajectoryFrame_.push_back(std::make_shared<std::string>(frame_placeholder_primitive));
-    primitive_trajectory_.push_back(std::make_shared<std::vector<std::array<double, 7>>>(trajectory_placeholder_primitive));
+        primitive_trajectoryFrame_.push_back(std::make_shared<std::string>(frame_placeholder_primitive));
+        primitive_trajectory_.push_back(std::make_shared<std::vector<std::array<double, 7>>>(trajectory_placeholder_primitive));
 
-    if(trajectory_placeholder_primitive.size() > 1)
-    {
-        primitive_collision_object_timeinterval_.push_back(trajectory_placeholder_primitive[1][6]); // dynamic obstacle
-    }
-    else 
-    {
-        primitive_collision_object_timeinterval_.push_back(0); // static obstacle
+        if(trajectory_placeholder_primitive.size() > 1)
+        {
+            primitive_collision_object_timeinterval_.push_back(trajectory_placeholder_primitive[1][6]); // dynamic obstacle
+        }
+        else 
+        {
+            primitive_collision_object_timeinterval_.push_back(0); // static obstacle
+        }
     }
 }
 
