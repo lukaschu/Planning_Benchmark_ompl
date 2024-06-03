@@ -48,14 +48,30 @@ class Collision_Checker
     private:
         std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_; // for visualization
         std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking
-        // Each element at an index correpsonds to one and another in (msg_mesh_, trajectory_frame_, trajectory_, collision_object_timeinterval_)
+        const double pi_ = 3.14159;
+
+        /*
+
+        DEFINITIONS, DESCRIBING THE COLLISION OBJECTS (EITHER PRIMITIVES OR MESHES)
+
+        */
+
+        // Each element at an index correpsonds to one and another in (msg_mesh_, mesh_trajectory_frame_, mesh_trajectory_, mesh_collision_object_timeinterval_)
         std::vector<std::shared_ptr<shape_msgs::msg::Mesh>> msg_mesh_;
-        std::vector<std::shared_ptr<std::string>> trajectoryFrame_;
-        std::vector<float> collision_object_timeinterval_; 
+        std::vector<std::shared_ptr<std::string>> mesh_trajectoryFrame_;
+        std::vector<float> mesh_collision_object_timeinterval_; 
         // Each element of trajectory_ contains a ptr to to the full trajectory of a collision object
         // Is a tedious format but I wanted to keep it consistent
-        std::vector<std::shared_ptr<std::vector<std::array<double, 7>>>> trajectory_; 
-        const double pi_ = 3.14159;
+        std::vector<std::shared_ptr<std::vector<std::array<double, 7>>>> mesh_trajectory_; 
+
+        // Each element at an index correpsonds to one and another in (msg_primitive_, primitive_trajectory_frame_, primitive_trajectory_, primitive_collision_object_timeinterval_)
+        std::vector<std::shared_ptr<int>> msg_primitive_;
+        std::vector<std::shared_ptr<std::string>> primitive_trajectoryFrame_;
+        std::vector<float> primitive_collision_object_timeinterval_; 
+        std::vector<std::shared_ptr<std::array<double, 3>>> primitive_dimensions_;
+        // Each element of trajectory_ contains a ptr to to the full trajectory of a collision object
+        // Is a tedious format but I wanted to keep it consistent
+        std::vector<std::shared_ptr<std::vector<std::array<double, 7>>>> primitive_trajectory_; 
 };
 
 #endif
