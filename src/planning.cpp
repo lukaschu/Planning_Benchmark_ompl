@@ -4,26 +4,23 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
+const double MAX_SOLVETIME = 60.0;
+
 using MyDuration = std::chrono::duration<double>;
 
 Planning::Planning()
 : Node("planner"), move_group_interface_(std::shared_ptr<rclcpp::Node>(std::move(this)), MOVE_GROUP)
 {   
-    RCLCPP_INFO(this->get_logger(), "planning constructor running");
-
     // Debug
-    debug_publisher_ = this->create_publisher<moveit_msgs::msg::RobotTrajectory>("robot_trajectory", 10);
+    debug_publisher_ = this->create_publisher<moveit_msgs::msg::RobotTrajectory>("robot_trajectory", 10); // publish the plan
     // End Debug
 
-    // initialize the collision checker 
+    // initialize the collision checker (after intializing the robot model)
     robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
     const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
     collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model);
 
-    // Get params
-    this->declare_parameter("solver", rclcpp::PARAMETER_STRING);
-    get_parameter("solver", solver_);
-
+    // planning space
     space_ = std::make_shared<ob::CompoundStateSpace>();
 
     // define elements that are contained within space
@@ -31,8 +28,8 @@ Planning::Planning()
     auto velocity = std::make_shared<ob::RealVectorStateSpace>(6);
     auto time = std::make_shared<ob::TimeStateSpace>();
 
-    space_->addSubspace(position, 0.9);
-    space_->addSubspace(velocity, 0.1);
+    space_->addSubspace(position, 0.75);
+    space_->addSubspace(velocity, 0.25);
     space_->addSubspace(time, 0);  
 
     /*
@@ -150,6 +147,8 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
     system input is directly set on the acceleration:  a[n] = u[n]
     */
 
+
+   // lambda function for normalization of propagated state
    auto normalize_angle = [](double angle) -> double {
         angle = fmod(angle + 180.0, 360.0);
         if (angle < 0)
@@ -199,11 +198,8 @@ Can subsequently be used for initialization of collision scene
 */
 void Planning::call_scenario_loader()
 {   
-    // load the scenario
+    // loads the scenario (e.g loads in the meshes and the primitives that build up the scenario)
     collision_checker_->load_scenario();
-
-    // load the scene at time 0 (not necessary)
-    // collision_checker_->load_scene(0);
 }
 
 /*
@@ -319,10 +315,6 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
             point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
         }
 
-        // Small error here. The size is equal to the amount of different accelerations.
-        // But sometimes the same acceleration is applied for several timesteps (f.e 0.5s)
-        // this needs to be included!!!
-
         double exec_time = compound_placeholder->as<ob::TimeStateSpace::StateType>(2)->position;
 
         //std::cerr<< "time to input : " << exec_time << std::endl;
@@ -342,9 +334,6 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
 
     robot_joint_trajectory.joint_names = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
     robot_trajectory.joint_trajectory = robot_joint_trajectory;
-
-    // again we print some stuff
-    //debug_publisher_->publish(start_state);
     
     plan.trajectory = robot_trajectory;
 
@@ -353,9 +342,6 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
 
 /*
 Function that solves the underlying problem with the desired method (choose between different smapling based methods)
-
-NOTE: -Maybe pass initial and final state differently (as geometric states)
-      -Need to include moving goal
 */
 void Planning::solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path)
 {   
@@ -363,7 +349,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     ob::ScopedState<> initial(space_);
     ob::ScopedState<> final(space_);
 
-    // Here set_initial_final function (at moment is random)
+    // Here set_initial_final function 
     set_initial(&initial, &final, initial_state, final_state);
 
     // Problem definition
@@ -377,34 +363,41 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(0.35);
+    planner->as<PLANNER>()->setGoalBias(0.5);
     
-    // Uncomment if RRT
+    // comment if RRT
     // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
     // planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
 
     planner->setup();
 
+    // Some Debug information on the problem 
+
     //si_->printSettings(std::cout);
     //pdef->print();
 
+    // End Debug
+
     auto start = std::chrono::steady_clock::now(); // timer start
 
-    RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "starting");
+    ob::PlannerStatus solved = planner->ob::Planner::solve(MAX_SOLVETIME); // calling the ompl planner
 
-    ob::PlannerStatus solved = planner->ob::Planner::solve(800.0);
     auto end = std::chrono::steady_clock::now(); // timer end
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start); // duration btw start and end
 
     // First we get the solution path
     if(solved)
     {   
         std::cerr << "got solution in: " << duration.count() / 1000 << " seconds" << std::endl;
         path = pdef->getSolutionPath();
-        //std::stringstream pathStream;
 
+        // Debug for printing the path
+
+        //std::stringstream pathStream;
         //path->print(pathStream);
         //std::cerr << path->getStates() << std::endl;
+
+        // ENd DEBUG
 
         // We adjust the format from ob::PathPtr to MoveGroupInterface::Plan 
         MoveGroupInterface::Plan moveit_plan = recover_moveit_path(path, duration.count(), pdef->getStartState(0));
@@ -413,22 +406,20 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
         debug_publisher_->publish(moveit_plan.trajectory);
         // End Debug
 
-        //start = std::chrono::steady_clock::now(); // timer start
         // Execute the traj on the robot (and simultanously start the simulation TODO !!!!1
         move_group_interface_.asyncExecute(moveit_plan);
-        //end = std::chrono::steady_clock::now();
-        collision_checker_->simulate_obstacles(); // moves the obstacles 
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-        //std::cerr << "executed in " << duration.count() << " milliseconds" << std::endl;
+        collision_checker_->simulate_obstacles(); // moves the obstacles  
     }
-    planner->clear();
+    planner->clear(); // just clear it in the end
 }
 
-
+/*
+Functionality that solves the planning problem using moveit
+This part would need some modification to be used properly. It was used for debugging while
+confining this codebase
+*/
 void Planning::solve_with_moveit()
 {
-    
     auto const target_pose = []{
         geometry_msgs::msg::Pose msg;
         msg.orientation.w = 1.0;

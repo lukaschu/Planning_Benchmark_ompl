@@ -35,13 +35,10 @@
 #include <moveit/collision_detection/collision_common.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 
-using moveit::planning_interface::MoveGroupInterface;
-
 #include <moveit_msgs/msg/robot_trajectory.h>
 #include <moveit_msgs/msg/robot_state.h>
 
-//#include <ompl/base/RealVectorBounds.h>
-//#include <ompl/base/CompoundStateSpace.h>
+using moveit::planning_interface::MoveGroupInterface;
 
 namespace ob = ompl::base;
 namespace oc = ompl::control;
@@ -50,24 +47,21 @@ class Planning : public rclcpp::Node
 {
 public:
     Planning();
-    static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end);
-    void call_scenario_loader();
-    void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state);
-    void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path);
-    void solve_with_moveit();
-    MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start);
-    //rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr planning_scene_diff_publisher_; // publisher for collision scene
-
-    rclcpp::Publisher<moveit_msgs::msg::RobotTrajectory>::SharedPtr debug_publisher_; // Publisher
+    static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end); // Defining the state transition
+    void call_scenario_loader(); // is called to establish the whole scenario and environemnt
+    void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state); // conditions are set for planner
+    void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path); // main solve loop
+    void solve_with_moveit(); // if desired, one can also use the moveit planner to estbalish a plan
+    MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start); // ompl plan is rewritten into a moveit readable executable plan
+    rclcpp::Publisher<moveit_msgs::msg::RobotTrajectory>::SharedPtr debug_publisher_; // Publisher to debug
 
 private:
     std::shared_ptr<ob::CompoundStateSpace> space_; // defines config. space (q,q_dot)
     std::shared_ptr<oc::RealVectorControlSpace> ctrl_space_; // defines input/ctrl space (acccel. = q_dot_dot)
-    std::shared_ptr<oc::SpaceInformation> si_;
-    std::string solver_; // Defines the sampling algo. that is used (RRT*, Kpiece ....)
-    MoveGroupInterface move_group_interface_;
+    std::shared_ptr<oc::SpaceInformation> si_; // space information
+    MoveGroupInterface move_group_interface_; // Interface needed for trajectory execution
+    std::shared_ptr<Collision_Checker> collision_checker_; // contains class which rules the collision check
     const double pi_ = 3.14159;
-    std::shared_ptr<Collision_Checker> collision_checker_;
 };
 
 #endif

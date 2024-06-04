@@ -39,12 +39,12 @@ namespace oc = ompl::control;
 class Collision_Checker
 {
     public:
-        Collision_Checker(const moveit::core::RobotModelPtr& kinematic_model);
-        bool is_state_valid(const oc::SpaceInformation *si, const ob::State *state);
+        Collision_Checker(const moveit::core::RobotModelPtr& kinematic_model); 
+        bool is_state_valid(const oc::SpaceInformation *si, const ob::State *state); // function passed to the ompl planner to check for collision
         void load_scenario(); // load in the configs that define the whole scenario (executed once in the beginning)
         void load_scene(double t); // updating scene for planning (executed each time a new sample needs to be checked)
         void update_scene(double t); // updating scene for simulation
-        void simulate_obstacles();
+        void simulate_obstacles();  // is called to cconfigure the simulation
     private:
         std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_; // for visualization
         std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking

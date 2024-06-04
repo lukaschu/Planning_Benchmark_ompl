@@ -3,11 +3,16 @@ Helper class definitions
 */
 #include "benchmark_planning/utils.hpp"
 
+/*
+size of the projection space 
+*/
 unsigned int MyProjection::getDimension(void) const
 {
     return 6;
 }
-
+/*
+Cellsize for projection function
+*/
 void MyProjection::defaultCellSizes(void)
 {
     cellSizes_.resize(6);
@@ -19,6 +24,10 @@ void MyProjection::defaultCellSizes(void)
     cellSizes_[5] = 1;
 }
 
+/*
+This function is needed by several solvers to defne a projection
+The projection can be chosen arbitrarly (see below), it has shown to be rather negligible what type of proj. is used
+*/
 void MyProjection::project(const ob::State *state, Eigen::Ref<Eigen::VectorXd> projection) const
 {
     const double *values_pos = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values;
