@@ -204,7 +204,9 @@ void Collision_Checker::load_scenario(std::string scenario)
 
     // According to the scenario arguemnt, we load in all obstacles which are either meshes or primitives
     for (auto const &dir_entry : std::filesystem::directory_iterator{std::filesystem::path(Package_share_dir / scenario_path)})
-    {
+    {   
+        //std::cerr << dir_entry.path() << std::endl;
+
         std::filesystem::path mesh_path_placeholder = dir_entry.path() / "mesh.ply";
 
         if(std::filesystem::exists(mesh_path_placeholder))
