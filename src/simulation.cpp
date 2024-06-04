@@ -24,18 +24,18 @@ void Simulation::run_simulation()
     // Get access to scenario
     std::string scenario = this->get_parameter("scenario").as_string();
 
-    // Final state (desired state)
-    std::vector<double> final_state(6);
-    final_state[0] = -20.0;
-    final_state[1] = -100.0;
-    final_state[2] = 20.0;
-    final_state[3] = -75.0;
-    final_state[4] = 10.0;
-    final_state[5] = 10.0;
+    // Now we recover the goal
+    std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
+    std::string goal_scenario_path = package_share_directory + "/config/scenarios/scenario_" + scenario + "/goal.yaml";
+
+    // Retrieve the goal configuration corresponding to the scenario
+    std::filesystem::path ScenarioGoalPath{goal_scenario_path};
+    YAML::Node GoalNode = YAML::LoadFile(ScenarioGoalPath);
+    std::vector<double> goal_config = GoalNode["goal"].as<std::vector<double>>();
 
     RCLCPP_INFO(this->get_logger(), "Initializing the solver");
 
-    planner.solve(initial_state_, final_state, path);
+    planner.solve(initial_state_, goal_config, path);
     //planner.solve_with_moveit();
 }
 
