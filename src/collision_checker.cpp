@@ -61,15 +61,18 @@ bool Collision_Checker::is_state_valid(const oc::SpaceInformation *si, const ob:
 
 /*
 Loads in the objects contained within the scene at time t. Gets called everytime we do collision checking at time t
+Essentially, the collision scene is loaded into the planning scene
 */
 void Collision_Checker::load_scene(double t)
 {   
-    // auto start = std::chrono::high_resolution_clock::now();
-
     // first remove all collision objects 
     planning_scene_->removeAllCollisionObjects();
 
-    // iterate through all mesh collision obejects that were loaded in load_scenario
+    /*
+    Mesh objects and trivial primitives are split up and considered sepperately in two loops
+    */
+
+    //  1) Iterate through all mesh collision obejects that were loaded in load_scenario
     for(unsigned int i = 0; i < mesh_trajectoryFrame_.size(); ++i)
     {
         // define a new moveit collision object
@@ -121,7 +124,7 @@ void Collision_Checker::load_scene(double t)
         }
     }
 
-    // iterate through all primitive collision obejects that were loaded in load_scenario
+    // 2) Iterate through all primitive collision obejects that were loaded in load_scenario
     for(unsigned int i = 0; i < primitive_trajectoryFrame_.size(); ++i)
     {   
         // define a new moveit collision object
@@ -180,10 +183,6 @@ void Collision_Checker::load_scene(double t)
         }
 
     }
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end- start);
-
-    // std::cerr << duration.count() << std::endl;
 }
 
 /*
@@ -200,7 +199,12 @@ void Collision_Checker::load_scenario()
     std::vector<std::string> primitive_paths;
     std::vector<std::string> mesh_paths;
 
-    // scenario_1 should be chosen
+    /*
+
+    scenario_1 should be chosen !!!! 
+    TODO
+
+    */
     for (auto const &dir_entry : std::filesystem::directory_iterator{std::filesystem::path(Package_share_dir / "config/scenarios/scenario_1/obstacles")})
     {
         std::filesystem::path mesh_path_placeholder = dir_entry.path() / "mesh.ply";
@@ -215,12 +219,28 @@ void Collision_Checker::load_scenario()
         }
     }
 
+    // Helper lambda function to recover the uri path for loading the mesh (is being used below)
+    auto convert_to_uri_path = [](const std::string& absolute_path, const std::string& uri_prefix) -> std::string {
+        std::string uri_path = absolute_path;
+        // Determine the search path dynamically
+        size_t pos = absolute_path.find("/config/");
+        if (pos != std::string::npos) {
+            std::string search_path = absolute_path.substr(0, pos);
+            // Replace the search path with the URI prefix
+            uri_path.replace(0, search_path.length(), uri_prefix);
+        }
+        return uri_path;
+        };
+
     // FIRST THE MESH
     for(unsigned int i = 0; i < mesh_paths.size(); ++i)
-    {
-        //std::string mesh_path = mesh_paths[i] + "/mesh.ply";
-        std::string mesh_path = "package://benchmark_planning/config/obstacles/obstacle_00/mesh.ply";
-        std::string mesh_trajectory_path = mesh_paths[i] + "/trajectory.yaml";
+    {   
+        // Need to convert the absolute path to an uri path for loading the mesh 
+        std::string absolute_path = mesh_paths[i] + "/mesh.ply"; // placeholder
+        std::string uri_prefix = "package://benchmark_planning"; //placeholder
+
+        std::string mesh_path = convert_to_uri_path(absolute_path, uri_prefix); // mesh path
+        std::string mesh_trajectory_path = mesh_paths[i] + "/trajectory.yaml"; // mesh traj. path
 
         // This part loads in the mesh and saves it to the member vector msg_mesh_
         // I dont specifically understand the details of each line 
@@ -287,6 +307,18 @@ void Collision_Checker::load_scenario()
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Problem is that the updating scene interface takes waaay too long

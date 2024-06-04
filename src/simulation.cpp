@@ -4,19 +4,21 @@ using std::placeholders::_1;
 Simulation::Simulation()
 : Node("simulator")
 {   
-    // Need to define the obstacle configs. then load them in in load scenario
+    // This function calls the obstacle_checker.define_scenario function which loads in all relevant obstacles and environments
     planner.call_scenario_loader(); // mostly for obstacles
 
+    // callback function that saves the current state of the simulated environment 
     state_subscription_ = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(
         "joint_trajectory_controller/state",  1000, std::bind(&Simulation::get_current_state, this, _1));
 }
 
 /*
-Runs the simulation with the given scenario and solver (maybe call from main function or define a subscriber/service/action )
+Runs the simulation with the given scenario and solver 
+is only called as soon as the current state is recovered by the callback function: get:current_state
 */
 void Simulation::run_simulation() 
 {   
-    // Final state follows from scenario
+    // Final state (desired state)
     std::vector<double> final_state(6);
     final_state[0] = -20.0;
     final_state[1] = -100.0;
@@ -32,7 +34,7 @@ void Simulation::run_simulation()
 }
 
 /*
-callback function to recover 
+callback function to recover the intial state and to start the simulation
 */
 void Simulation::get_current_state(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
 {   
@@ -44,6 +46,7 @@ void Simulation::get_current_state(const control_msgs::msg::JointTrajectoryContr
         initial_state_.push_back(msg_pos[i] / pi_ * 180); // should be in degrees
     }
     
+    // If the sate is received, we start the simulation
     if(!state_received_)
     {
         run_simulation();
