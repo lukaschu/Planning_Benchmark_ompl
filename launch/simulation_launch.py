@@ -13,6 +13,7 @@ import yaml
 
 def generate_launch_description():
     declared_arguments = []
+
     declared_arguments.append(
         DeclareLaunchArgument(
             "RIN",
@@ -20,10 +21,22 @@ def generate_launch_description():
         description="Robot identification number RIN to choose between setups -- possible values: [SRP1, IQ159-1]",
         )
     )
+    
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'scenario',
+        default_value='1',
+        description="Define what scenario is being used there are several choices"
+        )
+    )
+
     return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
 
 
 def launch_setup(context, *args, **kwargs):
+
+    # Retrieve the scenario argument
+    scenario = LaunchConfiguration('scenario').perform(context)
 
     # load config file
     motion_config_path = os.path.join(
@@ -76,7 +89,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # Start motion and environment nodes
-    avp_planner_node = Node(
+    benchmark_node = Node(
         package="benchmark_planning",
         executable="simulation",
         output="screen",
@@ -85,13 +98,15 @@ def launch_setup(context, *args, **kwargs):
             motion_config['motion_core_node'],
             {"use_sim_time": True},
             {"use_fake_hardware":True},
+            {"scenario": scenario},
         ]
     )
 
-    nodes_to_start = [TimerAction(
+    nodes_to_start = [
+        TimerAction(
         period=1.0,
         actions=[
-        avp_planner_node
+        benchmark_node
         ]
     )
     ]

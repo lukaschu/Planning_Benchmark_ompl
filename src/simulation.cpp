@@ -10,6 +10,11 @@ Simulation::Simulation()
     // callback function that saves the current state of the simulated environment 
     state_subscription_ = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(
         "joint_trajectory_controller/state",  1000, std::bind(&Simulation::get_current_state, this, _1));
+
+    // Retrieve the scenario which is specified as a launch argument
+    this->declare_parameter<std::string>("scenario", "1");
+    std::string scenario = this->get_parameter("scenario").as_string();
+    
 }
 
 /*
