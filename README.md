@@ -1,5 +1,5 @@
 # Planning_Benchmark
-Basic Benchmark for a 6DoF robot, using the a variety of omplś kinodynamic planners <br>
+Basic Benchmark for a 6DoF robot, using the a variety of ompl's kinodynamic planners <br>
 The simulation is originally taken from https://github.com/UniversalRobots/Universal_Robots_ROS2_Gazebo_Simulation and we use vsc tools to import all other repos. We tested everything on ROS2 Humble.
 
 ## Build Process
@@ -52,10 +52,11 @@ The simulation is originally taken from https://github.com/UniversalRobots/Unive
    ```
    Now run the ompl planner
    ```
-   ros2 launch benchmark_planning simulation_launch.py
+   ros2 launch benchmark_planning simulation_launch.py scenario:=1
    ```
    > **NOTE:** You can combine point 4. and 5. Meaning that you can first plan using moveit geometric planners
    > using the provided rviz interface, and then our planner.
+   > You can also choose from a variety of scenarios which are all defined in the configs folder
    >
    
    
