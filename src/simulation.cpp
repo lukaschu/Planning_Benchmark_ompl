@@ -4,25 +4,26 @@ using std::placeholders::_1;
 Simulation::Simulation()
 : Node("simulator")
 {   
+    // Retrieve the scenario which is specified as a launch argument
+    this->declare_parameter<std::string>("scenario", "1");
+
     // This function calls the obstacle_checker.define_scenario function which loads in all relevant obstacles and environments
-    planner.call_scenario_loader(); // mostly for obstacles
+    planner.call_scenario_loader(this->get_parameter("scenario").as_string()); // mostly for obstacles
 
     // callback function that saves the current state of the simulated environment 
     state_subscription_ = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(
         "joint_trajectory_controller/state",  1000, std::bind(&Simulation::get_current_state, this, _1));
-
-    // Retrieve the scenario which is specified as a launch argument
-    this->declare_parameter<std::string>("scenario", "1");
-    std::string scenario = this->get_parameter("scenario").as_string();
-    
 }
 
 /*
 Runs the simulation with the given scenario and solver 
-is only called as soon as the current state is recovered by the callback function: get:current_state
+is only called as soon as the current state is recovered by the callback function: get_current_state
 */
 void Simulation::run_simulation() 
 {   
+    // Get access to scenario
+    std::string scenario = this->get_parameter("scenario").as_string();
+
     // Final state (desired state)
     std::vector<double> final_state(6);
     final_state[0] = -20.0;

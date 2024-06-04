@@ -196,10 +196,10 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
 Function that gets the scenario and loads it in
 Can subsequently be used for initialization of collision scene
 */
-void Planning::call_scenario_loader()
+void Planning::call_scenario_loader(std::string scenario)
 {   
     // loads the scenario (e.g loads in the meshes and the primitives that build up the scenario)
-    collision_checker_->load_scenario();
+    collision_checker_->load_scenario(scenario);
 }
 
 /*

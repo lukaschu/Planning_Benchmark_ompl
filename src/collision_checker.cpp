@@ -190,22 +190,20 @@ Executed once to get all objects
 This function saves all obstacles in a dynamic vector which can then be used in the load_Scene function to update the 
 planning_scene
 */
-void Collision_Checker::load_scenario()
+void Collision_Checker::load_scenario(std::string scenario)
 {   
     // Retrieve the package share directory path
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
     std::filesystem::path Package_share_dir{package_share_directory};
 
+    std::string scenario_path = "config/scenarios/scenario_" + scenario + "/obstacles";
+
+    // will contain the paths fto either the meshes or primitives
     std::vector<std::string> primitive_paths;
     std::vector<std::string> mesh_paths;
 
-    /*
-
-    scenario_1 should be chosen !!!! 
-    TODO
-
-    */
-    for (auto const &dir_entry : std::filesystem::directory_iterator{std::filesystem::path(Package_share_dir / "config/scenarios/scenario_1/obstacles")})
+    // According to the scenario arguemnt, we load in all obstacles which are either meshes or primitives
+    for (auto const &dir_entry : std::filesystem::directory_iterator{std::filesystem::path(Package_share_dir / scenario_path)})
     {
         std::filesystem::path mesh_path_placeholder = dir_entry.path() / "mesh.ply";
 
