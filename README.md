@@ -58,8 +58,20 @@ The simulation is originally taken from https://github.com/UniversalRobots/Unive
    > using the provided rviz interface, and then our planner.
    > You can also choose from a variety of scenarios which are all defined in the configs folder
    >
-   
-   
+
+
+## Scenario
+Several scenarios can be tested, each containing a set of static and dynamic obstacles. They lie within the 
+config folder. There are two formats for defining the obstacles.
+
+1. Primitives (static/dynamic)
+   Primitive obstacles are defined by the obstacle message class (see the format in the config)
+2. Mesh (static/ dynamic)
+   Mesh obstacles can also be loaded in the same format as my examples in the folder.
+3. Static/Dynamic
+   In the trajectory.yaml file which sits whithin the scenario folder. If the trajectory has only one pose, the obstacle
+   is considered to be static. If the trajectory contains several poses with a corresponding time stamp, the obstacles are              considered to be dynamic. 
+
 
 
 
