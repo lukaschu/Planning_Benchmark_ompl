@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 #include "rclcpp/rclcpp.hpp"
 #include "benchmark_planning/planning.hpp"

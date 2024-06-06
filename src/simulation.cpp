@@ -47,9 +47,23 @@ void Simulation::get_current_state(const control_msgs::msg::JointTrajectoryContr
     auto msg_pos = msg->actual.positions;
     initial_state_.clear();
 
+    // Note that unfortunately the simulation returns values between -2pi and 2pi 
     for(unsigned int i = 0; i < 6; ++i)
-    {
-        initial_state_.push_back(msg_pos[i] / pi_ * 180); // should be in degrees
+    {   
+        double squeezed_state = msg_pos[i];
+
+        if(squeezed_state > pi_)
+        {
+            //double squeezed_state = std::fmod(squeezed_state ,pi_);
+            squeezed_state = squeezed_state  - 2 * pi_;
+        }
+        else if(squeezed_state < -pi_)
+        {
+            //double squeezed_state = std::fmod(squeezed_state ,pi_);
+            squeezed_state = 2*pi_ + squeezed_state;
+        }
+        
+        initial_state_.push_back(squeezed_state / pi_ * 180); // should be in degrees (between -180 to 180)
     }
     
     // If the sate is received, we start the simulation

@@ -4,7 +4,7 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 60.0;
+const double MAX_SOLVETIME = 20.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -445,7 +445,7 @@ void Planning::solve_with_moveit()
     if(success) {
         move_group_interface_.execute(plan);
     } else {
-        std::cerr << "No success gadddaammnn" << std::endl;
+        std::cerr << "No success" << std::endl;
     }
 }
 
