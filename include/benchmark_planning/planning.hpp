@@ -50,9 +50,9 @@ public:
     static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end); // Defining the state transition
     void call_scenario_loader(std::string scenario); // is called to establish the whole scenario and environemnt
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state); // conditions are set for planner
-    void solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path); // main solve loop
+    void solve(std::vector<double> initial_state, std::vector<double> true_start_state_pos, std::vector<double> final_state, ob::PathPtr &path); // main solve loop
     void solve_with_moveit(); // if desired, one can also use the moveit planner to estbalish a plan
-    MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start); // ompl plan is rewritten into a moveit readable executable plan
+    MoveGroupInterface::Plan recover_moveit_path(ob::PathPtr &path, std::vector<double> true_start_state_pos, double duration, ob::State *start); // ompl plan is rewritten into a moveit readable executable plan
     rclcpp::Publisher<moveit_msgs::msg::RobotTrajectory>::SharedPtr debug_publisher_; // Publisher to debug
 
 private:

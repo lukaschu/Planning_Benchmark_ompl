@@ -19,7 +19,7 @@ Simulation::Simulation()
 Runs the simulation with the given scenario and solver 
 is only called as soon as the current state is recovered by the callback function: get_current_state
 */
-void Simulation::run_simulation() 
+void Simulation::run_simulation(std::vector<double> true_start_state_pos) 
 {   
     // Get access to scenario
     std::string scenario = this->get_parameter("scenario").as_string();
@@ -35,7 +35,7 @@ void Simulation::run_simulation()
 
     RCLCPP_INFO(this->get_logger(), "Initializing the solver");
 
-    planner.solve(initial_state_, goal_config, path);
+    planner.solve(initial_state_, true_start_state_pos, goal_config, path);
     //planner.solve_with_moveit();
 }
 
@@ -44,13 +44,13 @@ callback function to recover the intial state and to start the simulation
 */
 void Simulation::get_current_state(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
 {   
-    auto msg_pos = msg->actual.positions;
+    std::vector<double> true_start_state_pos = msg->actual.positions;
     initial_state_.clear();
 
     // Note that unfortunately the simulation returns values between -2pi and 2pi 
     for(unsigned int i = 0; i < 6; ++i)
     {   
-        double squeezed_state = msg_pos[i];
+        double squeezed_state = true_start_state_pos[i];
 
         if(squeezed_state > pi_)
         {
@@ -69,7 +69,7 @@ void Simulation::get_current_state(const control_msgs::msg::JointTrajectoryContr
     // If the sate is received, we start the simulation
     if(!state_received_)
     {
-        run_simulation();
+        run_simulation(true_start_state_pos);
         state_received_ = true;
     }
 

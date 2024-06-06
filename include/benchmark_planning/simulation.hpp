@@ -21,7 +21,7 @@ class Simulation : public rclcpp::Node
 {   
 public:
     Simulation();
-    void run_simulation(); // is called as soon the intial state is received and state_received_== true
+    void run_simulation(std::vector<double> true_start_state_pos); // is called as soon the intial state is received and state_received_== true
     void get_current_state(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg); // callback function for subscription
 private:
     Planning planner; // planning class 

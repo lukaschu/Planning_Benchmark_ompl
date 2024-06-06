@@ -4,7 +4,7 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 20.0;
+const double MAX_SOLVETIME = 200.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -219,7 +219,7 @@ void Planning::set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, 
 /*
 In here we recover the right format for the path which is needed for the moveit.execute(path) function
 */
-MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double duration, ob::State *start)
+MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::vector<double> true_start_state_pos, double duration, ob::State *start)
 {
     // Now we try to bring the solution path into the right format
     // We need a moveit::plan object with attributes:
@@ -241,12 +241,12 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
 
     auto compound_placeholder = start->as<ob::CompoundState>();
     // first cover the positions
-    float pos0 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[0] / 180 * pi_;
-    float pos1 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[1] / 180 * pi_;
-    float pos2 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[2] / 180 * pi_;
-    float pos3 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[3] / 180 * pi_;
-    float pos4 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[4] / 180 * pi_;
-    float pos5 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[5] / 180 * pi_;
+    float pos0 = true_start_state_pos[0];
+    float pos1 = true_start_state_pos[1];
+    float pos2 = true_start_state_pos[2];
+    float pos3 = true_start_state_pos[3];
+    float pos4 = true_start_state_pos[4];
+    float pos5 = true_start_state_pos[5];
     start_state.joint_state.position = {pos0, pos1, pos2, pos3, pos4, pos5};
 
     // second the velocity
@@ -258,67 +258,102 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
     float vel5 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[5] / 180 * pi_;
     start_state.joint_state.velocity = {vel0, vel1, vel2, vel3, vel4, vel5};
     
-    plan.start_state = start_state;
-    
-    // THIRD ARGUMENT
-    moveit_msgs::msg::RobotTrajectory robot_trajectory; // is then passed to the plan
-    trajectory_msgs::msg::JointTrajectory robot_joint_trajectory; // is an element needed for the robot_trajectory
+    plan.start_state = start_state; // start state contains only the vel and the pos
 
+    // WE extract the relevant values from the path that was computed
     auto placeholder_path = path->as<oc::PathControl>(); // convert to appropriate type
     std::vector<ob::State*> &trajectory_path = placeholder_path->getStates(); // extract the trajectory
     std::vector<oc::Control*> &control_path = placeholder_path->getControls();// extract the controls
 
+    // recover the first value of the path
+    trajectory_msgs::msg::JointTrajectoryPoint point;
+    float acc0 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[0] / 180 * pi_;
+    float acc1 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[1] / 180 * pi_;
+    float acc2 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[2] / 180 * pi_;
+    float acc3 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[3] / 180 * pi_;
+    float acc4 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[4] / 180 * pi_;
+    float acc5 = control_path[0]->as<oc::RealVectorControlSpace::ControlType>()->values[5] / 180 * pi_;
+
+    point.positions = {pos0, pos1, pos2, pos3, pos4, pos5};
+    point.velocities = {vel0, vel1, vel2, vel3, vel4, vel5};
+    point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
+    point.time_from_start.sec = static_cast<int32_t>(0);
+    point.time_from_start.nanosec = static_cast<uint32_t>(0);
+
+    std::cerr << "position at time 0: " << pos1 << std::endl;
+    std::cerr << "velocity at time 0: " << vel1 << std::endl;
+    std::cerr << "acceleration at time 0: " << acc1 << std::endl;
+
+    // This contains the whole relevant trajectory
+    trajectory_msgs::msg::JointTrajectory robot_joint_trajectory; // is an element needed for the robot_trajectory
+
+    // Finally add the first point
+    robot_joint_trajectory.points.push_back(point);
+
+    // THIRD ARGUMENT
+
     path->print(std::cerr); // inspect the acquired solution
 
-    for(long unsigned int i = 0; i < trajectory_path.size(); ++i)
+    double prev_exec_time = 0;
+    for(long unsigned int i = 1; i < trajectory_path.size(); ++i)
     {   
         trajectory_msgs::msg::JointTrajectoryPoint point; // will contain the position, velocity and acceleration
         auto compound_placeholder = trajectory_path[i]->as<ob::CompoundState>(); // current value from the path (pos and vel)
 
-        // first cover the positions
-        float pos0 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[0] / 180 * pi_;
-        float pos1 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[1] / 180 * pi_;
-        float pos2 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[2] / 180 * pi_;
-        float pos3 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[3] / 180 * pi_;
-        float pos4 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[4] / 180 * pi_;
-        float pos5 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(0)->values[5] / 180 * pi_;
+        // first cover the positions by forward integration 
+
+        /*
+        This is tedious and has its origin at the fact that the simulation 
+        returns values btw -2pi , 2pi and not -pi and pi as in our planner
+        We could look plan in the larger interval but that would be very dumb.
+        */
+
+        // recover the time up untill the acc is applied
+        double exec_time = compound_placeholder->as<ob::TimeStateSpace::StateType>(2)->position;
+        double time_placeholder = exec_time - prev_exec_time;
+
+        pos0 = pos0 + time_placeholder * vel0 + 0.5 * std::pow(time_placeholder,2) * acc0;
+        pos1 = pos1 + time_placeholder * vel1 + 0.5 * std::pow(time_placeholder,2) * acc1;
+        pos2 = pos2 + time_placeholder * vel2 + 0.5 * std::pow(time_placeholder,2) * acc2;
+        pos3 = pos3 + time_placeholder * vel3 + 0.5 * std::pow(time_placeholder,2) * acc3;
+        pos4 = pos4 + time_placeholder * vel4 + 0.5 * std::pow(time_placeholder,2) * acc4;
+        pos5 = pos5 + time_placeholder * vel5 + 0.5 * std::pow(time_placeholder,2) * acc5;
         point.positions = {pos0, pos1, pos2, pos3, pos4, pos5};
 
+        prev_exec_time = exec_time;
+
         // second the velocity
-        float vel0 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[0] / 180 * pi_;
-        float vel1 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[1] / 180 * pi_;
-        float vel2 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[2] / 180 * pi_;
-        float vel3 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[3] / 180 * pi_;
-        float vel4 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[4] / 180 * pi_;
-        float vel5 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[5] / 180 * pi_;
+        vel0 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[0] / 180 * pi_;
+        vel1 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[1] / 180 * pi_;
+        vel2 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[2] / 180 * pi_;
+        vel3 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[3] / 180 * pi_;
+        vel4 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[4] / 180 * pi_;
+        vel5 = compound_placeholder->as<ob::RealVectorStateSpace::StateType>(1)->values[5] / 180 * pi_;
         point.velocities = {vel0, vel1, vel2, vel3, vel4, vel5};
 
-        // Third the accelerations
+        // second the accelerations
+
+        // default
+        acc0 = 0;
+        acc1 = 0;
+        acc2 = 0;
+        acc3 = 0;
+        acc4 = 0;
+        acc5 = 0;
+        
+        // if not the last state
         if(i != trajectory_path.size() - 1)
-        {
-            float acc0 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[0] / 180 * pi_;
-            float acc1 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[1] / 180 * pi_;
-            float acc2 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[2] / 180 * pi_;
-            float acc3 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[3] / 180 * pi_;
-            float acc4 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[4] / 180 * pi_;
-            float acc5 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[5] / 180 * pi_;
-            point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
+        {   
+            acc0 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[0] / 180 * pi_;
+            acc1 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[1] / 180 * pi_;
+            acc2 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[2] / 180 * pi_;
+            acc3 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[3] / 180 * pi_;
+            acc4 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[4] / 180 * pi_;
+            acc5 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[5] / 180 * pi_;
         }
-        else
-        {
-            float acc0 = 0;
-            float acc1 = 0;
-            float acc2 = 0;
-            float acc3 = 0;
-            float acc4 = 0;
-            float acc5 = 0;
-            point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
-        }
-
-        double exec_time = compound_placeholder->as<ob::TimeStateSpace::StateType>(2)->position;
-
-        //std::cerr<< "time to input : " << exec_time << std::endl;
-
+        
+        point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
+        
         MyDuration result = MyDuration(exec_time);
 
         // Convert the duration to seconds
@@ -333,8 +368,9 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
     }
 
     robot_joint_trajectory.joint_names = {"shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"};
+
+    moveit_msgs::msg::RobotTrajectory robot_trajectory; // is then passed to the plan 
     robot_trajectory.joint_trajectory = robot_joint_trajectory;
-    
     plan.trajectory = robot_trajectory;
 
     return plan;
@@ -343,7 +379,7 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, double
 /*
 Function that solves the underlying problem with the desired method (choose between different smapling based methods)
 */
-void Planning::solve(std::vector<double> initial_state, std::vector<double> final_state, ob::PathPtr &path)
+void Planning::solve(std::vector<double> initial_state,std::vector<double> true_start_state_pos,std::vector<double> final_state, ob::PathPtr &path)
 {   
     // Defining initial and final state
     ob::ScopedState<> initial(space_);
@@ -400,7 +436,7 @@ void Planning::solve(std::vector<double> initial_state, std::vector<double> fina
         // ENd DEBUG
 
         // We adjust the format from ob::PathPtr to MoveGroupInterface::Plan 
-        MoveGroupInterface::Plan moveit_plan = recover_moveit_path(path, duration.count(), pdef->getStartState(0));
+        MoveGroupInterface::Plan moveit_plan = recover_moveit_path(path, true_start_state_pos, duration.count(), pdef->getStartState(0));
 
         // Debug
         debug_publisher_->publish(moveit_plan.trajectory);
