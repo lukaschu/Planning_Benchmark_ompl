@@ -4,7 +4,7 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 200.0;
+const double MAX_SOLVETIME = 20.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -56,12 +56,12 @@ Planning::Planning()
     velocityBounds.setLow(1, -180);
     velocityBounds.setHigh(1, 180);
     // 3.
-    positionBounds.setLow(2, -180);
-    positionBounds.setHigh(2, 180); // was -45
+    positionBounds.setLow(2, -170);
+    positionBounds.setHigh(2, 170); 
     velocityBounds.setLow(2, -180);
     velocityBounds.setHigh(2, 180);
     // 4.
-    positionBounds.setLow(3, -180); // was -45
+    positionBounds.setLow(3, -180); 
     positionBounds.setHigh(3, 180);
     velocityBounds.setLow(3, -180);
     velocityBounds.setHigh(3, 180);
@@ -148,7 +148,7 @@ void Planning::dynamics(const ob::State *start, const oc::Control *control, cons
     */
 
 
-   // lambda function for normalization of propagated state
+   // lambda function for normalization of propagated state (between -180 and 180)
    auto normalize_angle = [](double angle) -> double {
         angle = fmod(angle + 180.0, 360.0);
         if (angle < 0)
@@ -227,6 +227,12 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
     // 2) trajectory of type moveit_msgs::msg::Robot_trajectory
     // 3) planning_time of type double (time that it took us planning)
 
+    // helper lambda function for normalizing between -360 and 360 (which is the format needed for the moveit plan)
+    auto normalize_angle = [this](double angle) -> double {
+        angle = fmod(angle, 2*pi_);
+        return angle;
+    };
+
     // object that we return
     MoveGroupInterface::Plan plan; 
 
@@ -280,10 +286,6 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
     point.time_from_start.sec = static_cast<int32_t>(0);
     point.time_from_start.nanosec = static_cast<uint32_t>(0);
 
-    std::cerr << "position at time 0: " << pos1 << std::endl;
-    std::cerr << "velocity at time 0: " << vel1 << std::endl;
-    std::cerr << "acceleration at time 0: " << acc1 << std::endl;
-
     // This contains the whole relevant trajectory
     trajectory_msgs::msg::JointTrajectory robot_joint_trajectory; // is an element needed for the robot_trajectory
 
@@ -312,12 +314,12 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
         double exec_time = compound_placeholder->as<ob::TimeStateSpace::StateType>(2)->position;
         double time_placeholder = exec_time - prev_exec_time;
 
-        pos0 = pos0 + time_placeholder * vel0 + 0.5 * std::pow(time_placeholder,2) * acc0;
-        pos1 = pos1 + time_placeholder * vel1 + 0.5 * std::pow(time_placeholder,2) * acc1;
-        pos2 = pos2 + time_placeholder * vel2 + 0.5 * std::pow(time_placeholder,2) * acc2;
-        pos3 = pos3 + time_placeholder * vel3 + 0.5 * std::pow(time_placeholder,2) * acc3;
-        pos4 = pos4 + time_placeholder * vel4 + 0.5 * std::pow(time_placeholder,2) * acc4;
-        pos5 = pos5 + time_placeholder * vel5 + 0.5 * std::pow(time_placeholder,2) * acc5;
+        pos0 = normalize_angle(pos0 + time_placeholder * vel0 + 0.5 * std::pow(time_placeholder,2) * acc0);
+        pos1 = normalize_angle(pos1 + time_placeholder * vel1 + 0.5 * std::pow(time_placeholder,2) * acc1);
+        pos2 = normalize_angle(pos2 + time_placeholder * vel2 + 0.5 * std::pow(time_placeholder,2) * acc2);
+        pos3 = normalize_angle(pos3 + time_placeholder * vel3 + 0.5 * std::pow(time_placeholder,2) * acc3);
+        pos4 = normalize_angle(pos4 + time_placeholder * vel4 + 0.5 * std::pow(time_placeholder,2) * acc4);
+        pos5 = normalize_angle(pos5 + time_placeholder * vel5 + 0.5 * std::pow(time_placeholder,2) * acc5);
         point.positions = {pos0, pos1, pos2, pos3, pos4, pos5};
 
         prev_exec_time = exec_time;
