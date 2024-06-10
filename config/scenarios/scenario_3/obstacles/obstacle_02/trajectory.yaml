@@ -1,7 +1,7 @@
 frame: base_link
 trajectory:
 - - -0.5
-  - 0.5
+  - 0.75
   - 0.75
   - 0.0
   - 0.0
