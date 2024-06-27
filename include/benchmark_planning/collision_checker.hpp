@@ -5,6 +5,7 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include "rclcpp/rclcpp.hpp"
 
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
@@ -36,7 +37,7 @@
 namespace ob = ompl::base;
 namespace oc = ompl::control;
 
-class Collision_Checker
+class Collision_Checker : public rclcpp::Node
 {
     public:
         Collision_Checker(const moveit::core::RobotModelPtr& kinematic_model); 
@@ -48,6 +49,7 @@ class Collision_Checker
     private:
         std::shared_ptr<moveit::planning_interface::PlanningSceneInterface> planning_scene_interface_; // for visualization
         std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking
+        rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr scene_publisher_; // publisher for visualization
         const double pi_ = 3.14159;
 
         /*

@@ -4,7 +4,7 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 10.0;
+const double MAX_SOLVETIME = 100.0;
 
 using MyDuration = std::chrono::duration<double>;
 

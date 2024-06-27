@@ -10,10 +10,11 @@ int main(int argc, char ** argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<Simulation>();
 
-    auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-    executor->add_node(node->get_node_base_interface());
-    executor->spin();
-    rclcpp::shutdown();
+    // auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+    // executor->add_node(node->get_node_base_interface());
+    // executor->spin();
+    rclcpp::spin(node->get_node_base_interface());
+    //rclcpp::shutdown();
     
     return 0;
 }
