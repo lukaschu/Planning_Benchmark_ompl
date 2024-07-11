@@ -26,7 +26,7 @@ void Simulation::run_simulation(std::vector<double> true_start_state_pos)
 
     // Now we recover the goal
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
-    std::string goal_scenario_path = package_share_directory + "/config/scenarios/scenario_" + scenario + "/goal.yaml";
+    std::string goal_scenario_path = package_share_directory + "/config/scenarios/final_scenario_" + scenario + "/goal.yaml";
 
     // Retrieve the goal configuration corresponding to the scenario
     std::filesystem::path ScenarioGoalPath{goal_scenario_path};

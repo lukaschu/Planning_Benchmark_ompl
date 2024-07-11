@@ -153,7 +153,7 @@ void Collision_Checker::load_scene(double t)
 
         if(!(primitive_collision_object_timeinterval_[i] == 0))
         {
-            traj_index = static_cast<int>(std::round(t / mesh_collision_object_timeinterval_[i])); // dynamic obstacle
+            traj_index = static_cast<int>(std::round(t / primitive_collision_object_timeinterval_[i])); // dynamic obstacle
         }
 
         auto primitive_pose{primitive_obstacles_trajectory[traj_index]};
@@ -199,8 +199,8 @@ void Collision_Checker::load_scenario(std::string scenario)
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
     std::filesystem::path Package_share_dir{package_share_directory};
 
-    //std::string scenario_path = "config/scenarios/scenario_" + scenario + "/obstacles";
-    std::string scenario_path = "config/scenarios/example_scenario/obstacles";
+    std::string scenario_path = "config/scenarios/final_scenario_" + scenario + "/obstacles";
+    //std::string scenario_path = "config/scenarios/example_scenario/obstacles";
 
     // will contain the paths fto either the meshes or primitives
     std::vector<std::string> primitive_paths;
@@ -331,7 +331,7 @@ void Collision_Checker::load_scenario(std::string scenario)
 // Sets a timer and runs the simulation in real time
 void Collision_Checker::simulate_obstacles()
 {   
-    std::cerr << "simulating the objects now" << std::endl;
+    // std::cerr << "simulating the objects now" << std::endl;
 
     // // We start by updating the scene every 0.1 seconds and simulate for 200 timesteps,
     // auto start = std::chrono::high_resolution_clock::now();
@@ -438,7 +438,7 @@ void Collision_Checker::update_scene(double t) // time in seconds
 
         if(!(primitive_collision_object_timeinterval_[i] == 0))
         {
-            traj_index = static_cast<int>(std::round(t / mesh_collision_object_timeinterval_[i])); // dynamic obstacle
+            traj_index = static_cast<int>(std::round(t / primitive_collision_object_timeinterval_[i])); // dynamic obstacle
         }
 
         auto primitive_pose{primitive_obstacles_trajectory[traj_index]};
