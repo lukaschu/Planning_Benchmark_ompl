@@ -4,12 +4,12 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 100.0;
+const double MAX_SOLVETIME = 10.0;
 
 using MyDuration = std::chrono::duration<double>;
 
-Planning::Planning()
-: Node("planner"), move_group_interface_(std::shared_ptr<rclcpp::Node>(std::move(this)), MOVE_GROUP)
+Planning::Planning(rclcpp::Node *parent_node)
+: Node("planner"), main_node_(parent_node), move_group_interface_(std::shared_ptr<rclcpp::Node>(std::move(this)), MOVE_GROUP)
 {   
     // Debug
     debug_publisher_ = this->create_publisher<moveit_msgs::msg::RobotTrajectory>("robot_trajectory", 10); // publish the plan
@@ -18,7 +18,7 @@ Planning::Planning()
     // initialize the collision checker (after intializing the robot model)
     robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
     const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
-    collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model);
+    collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model, main_node_);
 
     // planning space
     space_ = std::make_shared<ob::CompoundStateSpace>();
@@ -395,7 +395,7 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     pdef->setStartAndGoalStates(initial, final, 6);
 
     // Defining the planner (EST, RRT, KPIECE, PDST) (is not very smooth but don't know how else)
-    using PLANNER = oc::RRT;
+    using PLANNER = oc::EST;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
@@ -404,8 +404,8 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     planner->as<PLANNER>()->setGoalBias(0.5);
     
     // comment if RRT
-    // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
-    // planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
+    space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
+    planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
 
     planner->setup();
 
@@ -444,9 +444,8 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
         debug_publisher_->publish(moveit_plan.trajectory);
         // End Debug
 
-        // Execute the traj on the robot (and simultanously start the simulation TODO !!!!1
-        move_group_interface_.asyncExecute(moveit_plan);
-        collision_checker_->simulate_obstacles(); // moves the obstacles  
+        collision_checker_->simulate_obstacles(); // moves the obstacles 
+        move_group_interface_.asyncExecute(moveit_plan); 
     }
     planner->clear(); // just clear it in the end
 }

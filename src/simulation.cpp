@@ -4,11 +4,14 @@ using std::placeholders::_1;
 Simulation::Simulation()
 : Node("simulator")
 {   
+    // initialize planning class as shared ptr
+    planner_ = std::make_shared<Planning>(this);
+
     // Retrieve the scenario which is specified as a launch argument
     this->declare_parameter<std::string>("scenario", "1");
 
     // This function calls the obstacle_checker.define_scenario function which loads in all relevant obstacles and environments
-    planner.call_scenario_loader(this->get_parameter("scenario").as_string()); // mostly for obstacles
+    planner_->call_scenario_loader(this->get_parameter("scenario").as_string()); // mostly for obstacles
 
     // callback function that saves the current state of the simulated environment 
     state_subscription_ = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(
@@ -35,8 +38,8 @@ void Simulation::run_simulation(std::vector<double> true_start_state_pos)
 
     RCLCPP_INFO(this->get_logger(), "Initializing the solver");
 
-    planner.solve(initial_state_, true_start_state_pos, goal_config, path);
-    //planner.solve_with_moveit();
+    planner_->solve(initial_state_, true_start_state_pos, goal_config, path);
+    //planner_->solve_with_moveit();
 }
 
 /*

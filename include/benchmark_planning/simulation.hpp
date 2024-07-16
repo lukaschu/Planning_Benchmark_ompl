@@ -24,7 +24,7 @@ public:
     void run_simulation(std::vector<double> true_start_state_pos); // is called as soon the intial state is received and state_received_== true
     void get_current_state(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg); // callback function for subscription
 private:
-    Planning planner; // planning class 
+    std::shared_ptr<Planning> planner_; // planning class 
     ob::PathPtr path; // will contain the relevant path
     rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr state_subscription_; // Subscriber to get the current state 
     std::vector<double> initial_state_; // will contain the infos for the planner on the initial state

@@ -46,7 +46,7 @@ namespace oc = ompl::control;
 class Planning : public rclcpp::Node
 {
 public:
-    Planning();
+    Planning(rclcpp::Node *parent_node);
     static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end); // Defining the state transition
     void call_scenario_loader(std::string scenario); // is called to establish the whole scenario and environemnt
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state); // conditions are set for planner
@@ -62,6 +62,7 @@ private:
     MoveGroupInterface move_group_interface_; // Interface needed for trajectory execution
     std::shared_ptr<Collision_Checker> collision_checker_; // contains class which rules the collision check
     const double pi_ = 3.14159;
+    rclcpp::Node* main_node_;
 };
 
 #endif

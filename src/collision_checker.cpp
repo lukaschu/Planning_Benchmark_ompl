@@ -1,15 +1,13 @@
 #include <benchmark_planning/collision_checker.hpp>
 
-Collision_Checker::Collision_Checker(const moveit::core::RobotModelPtr& kinematic_model)
-: Node("obstacle_checker")
+Collision_Checker::Collision_Checker(const moveit::core::RobotModelPtr& kinematic_model, rclcpp::Node *parent_node)
+: parent_node_(parent_node)
 {
     // Define the variables needed
-    // Initialized the scene interface (needed for visualization)
-    planning_scene_interface_ = std::make_shared<moveit::planning_interface::PlanningSceneInterface>();
     planning_scene_ = std::make_shared<planning_scene::PlanningScene>(kinematic_model);
     planning_scene_->allocateCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
 
-    scene_publisher_ = this->create_publisher<moveit_msgs::msg::PlanningScene>("planning_scene", 10); // publish the plan
+    scene_publisher_ = parent_node->create_publisher<moveit_msgs::msg::PlanningScene>("planning_scene", 10); // publish the plan
 }
 
 /*
@@ -119,12 +117,6 @@ void Collision_Checker::load_scene(double t)
 
         planning_scene_->processCollisionObjectMsg(collision_object);
 
-        // At time 0 we also add the collision object to the scene in rviz
-        // if(t == 0)
-        // {   
-        //     std::cerr << " adding the mesh" << std::endl;
-        //     planning_scene_interface_->applyCollisionObject(collision_object);
-        // }
     }
 
     // 2) Iterate through all primitive collision obejects that were loaded in load_scenario
@@ -177,13 +169,6 @@ void Collision_Checker::load_scene(double t)
         collision_object.operation = collision_object.ADD; // ADD means new object
 
         planning_scene_->processCollisionObjectMsg(collision_object);
-
-        // At time 0 we also add the collision object to the scene in rviz
-        // if(t == 0)
-        // {   
-        //     std::cerr << " adding the primtive" << std::endl;
-        //     planning_scene_interface_->applyCollisionObject(collision_object);
-        // }
 
     }
 }
@@ -310,46 +295,17 @@ void Collision_Checker::load_scenario(std::string scenario)
             primitive_collision_object_timeinterval_.push_back(0); // static obstacle
         }
     }
+    update_scene();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Problem is that the updating scene interface takes waaay too long
-
 
 // Sets a timer and runs the simulation in real time
 void Collision_Checker::simulate_obstacles()
 {   
-    // std::cerr << "simulating the objects now" << std::endl;
+    std::cerr << "simulating the objects now" << std::endl;
 
-    // // We start by updating the scene every 0.1 seconds and simulate for 200 timesteps,
-    // auto start = std::chrono::high_resolution_clock::now();
-    
-    // for(unsigned int i = 0; i <= 100; ++i)
-    // {
-    //     auto update_start_time = std::chrono::high_resolution_clock::now();
-    //     update_scene(0.3 * i); 
-    //     auto update_end_time = std::chrono::high_resolution_clock::now();
-    //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(update_end_time - update_start_time);
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(200) - duration);
-    // }
-
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-    // //std::cerr << "start time is: " << start << " seconds" << std::endl;
-    // std::cerr << "simulation took: " << duration.count() << " seconds" << std::endl;
-
+    simulation_counter_ = 0;
+    kalman_filter_timer_ = parent_node_->create_wall_timer(std::chrono::milliseconds(200), 
+            std::bind(&Collision_Checker::update_scene, this));
 }
 
 
@@ -358,59 +314,60 @@ Move the obstacles in real time (for sim)
 This function should be called simultaneously with the moveit.execute(function)
 Idea is to call execute function that runs asynchronously
 */
-void Collision_Checker::update_scene(double t) // time in seconds
-{   
-    // first remove all collision objects 
-    planning_scene_->removeAllCollisionObjects();
+void Collision_Checker::update_scene() // time in seconds
+{       
+    double t = simulation_counter_ * 0.2;
+    // // first remove all collision objects 
+    // planning_scene_->removeAllCollisionObjects();
 
-    /*
-    Mesh objects and trivial primitives are split up and considered sepperately in two loops
-    */
+    // /*
+    // Mesh objects and trivial primitives are split up and considered sepperately in two loops
+    // */
 
-    //  1) Iterate through all mesh collision obejects that were loaded in load_scenario
-    for(unsigned int i = 0; i < mesh_trajectoryFrame_.size(); ++i)
-    {
-        // define a new moveit collision object
-        moveit_msgs::msg::CollisionObject collision_object;
-        collision_object.id = "mesh: " + std::to_string(i);
-        collision_object.header.frame_id = *mesh_trajectoryFrame_[i]; // adding the frame 
-        // define the mesh that describes the collision object
-        collision_object.meshes.resize(1);
-        collision_object.meshes[0] = *msg_mesh_[i];
+    // //  1) Iterate through all mesh collision obejects that were loaded in load_scenario
+    // for(unsigned int i = 0; i < mesh_trajectoryFrame_.size(); ++i)
+    // {
+    //     // define a new moveit collision object
+    //     moveit_msgs::msg::CollisionObject collision_object;
+    //     collision_object.id = "mesh: " + std::to_string(i);
+    //     collision_object.header.frame_id = *mesh_trajectoryFrame_[i]; // adding the frame 
+    //     // define the mesh that describes the collision object
+    //     collision_object.meshes.resize(1);
+    //     collision_object.meshes[0] = *msg_mesh_[i];
 
-        // get the current pose of the object (according to the time t)
-        std::vector<std::array<double, 7>> obstacles_trajectory = *mesh_trajectory_[i];
-        int traj_index = 0;
+    //     // get the current pose of the object (according to the time t)
+    //     std::vector<std::array<double, 7>> obstacles_trajectory = *mesh_trajectory_[i];
+    //     int traj_index = 0;
 
-        if(!(mesh_collision_object_timeinterval_[i] == 0))
-        {
-            traj_index = static_cast<int>(std::round(t / mesh_collision_object_timeinterval_[i])); // dynamic obstacle
-        }
+    //     if(!(mesh_collision_object_timeinterval_[i] == 0))
+    //     {
+    //         traj_index = static_cast<int>(std::round(t / mesh_collision_object_timeinterval_[i])); // dynamic obstacle
+    //     }
 
-        auto pose{obstacles_trajectory[traj_index]};
+    //     auto pose{obstacles_trajectory[traj_index]};
 
-        // set the pose to the collision object
-        geometry_msgs::msg::Pose pose_msg;
-        pose_msg.position.x = pose[0];
-        pose_msg.position.y = pose[1];
-        pose_msg.position.z = pose[2];
+    //     // set the pose to the collision object
+    //     geometry_msgs::msg::Pose pose_msg;
+    //     pose_msg.position.x = pose[0];
+    //     pose_msg.position.y = pose[1];
+    //     pose_msg.position.z = pose[2];
 
-        tf2::Quaternion quat_msg;
+    //     tf2::Quaternion quat_msg;
 
-        quat_msg.setRPY(pose[3], pose[4], pose[5]);
+    //     quat_msg.setRPY(pose[3], pose[4], pose[5]);
 
-        pose_msg.orientation.w = quat_msg.getW();   
-        pose_msg.orientation.x = quat_msg.getX();
-        pose_msg.orientation.y = quat_msg.getY();
-        pose_msg.orientation.z = quat_msg.getZ();
+    //     pose_msg.orientation.w = quat_msg.getW();   
+    //     pose_msg.orientation.x = quat_msg.getX();
+    //     pose_msg.orientation.y = quat_msg.getY();
+    //     pose_msg.orientation.z = quat_msg.getZ();
 
-        collision_object.pose = pose_msg; // pass the pose
+    //     collision_object.pose = pose_msg; // pass the pose
 
-        collision_object.operation = collision_object.ADD; // ADD means new object
+    //     collision_object.operation = collision_object.ADD; // ADD means new object
 
-        planning_scene_->processCollisionObjectMsg(collision_object);
+    //     planning_scene_->processCollisionObjectMsg(collision_object);
 
-    }
+    // }
 
     // 2) Iterate through all primitive collision obejects that were loaded in load_scenario
     for(unsigned int i = 0; i < primitive_trajectoryFrame_.size(); ++i)
@@ -469,4 +426,6 @@ void Collision_Checker::update_scene(double t) // time in seconds
     planning_scene_->getPlanningSceneMsg(planning_scene_msg);
     // publish the planning scene
     scene_publisher_->publish(planning_scene_msg);
+
+    simulation_counter_ += 1;
 }

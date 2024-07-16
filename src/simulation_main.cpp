@@ -13,7 +13,7 @@ int main(int argc, char ** argv)
     // auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     // executor->add_node(node->get_node_base_interface());
     // executor->spin();
-    rclcpp::spin(node->get_node_base_interface());
+    rclcpp::spin(node);
     //rclcpp::shutdown();
     
     return 0;
