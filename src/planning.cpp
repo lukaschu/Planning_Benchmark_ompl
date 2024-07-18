@@ -3,8 +3,8 @@
 //#include "benchmark_planning/collision_checker.hpp"
 
 const std::string MOVE_GROUP = "ur_manipulator";
-const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 10.0;
+const double PROP_STEPSIZE = 0.05;
+const double MAX_SOLVETIME = 600.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -28,8 +28,8 @@ Planning::Planning(rclcpp::Node *parent_node)
     auto velocity = std::make_shared<ob::RealVectorStateSpace>(6);
     auto time = std::make_shared<ob::TimeStateSpace>();
 
-    space_->addSubspace(position, 0.75);
-    space_->addSubspace(velocity, 0.25);
+    space_->addSubspace(position, 1.0);
+    space_->addSubspace(velocity, 0.0);
     space_->addSubspace(time, 0);  
 
     /*
@@ -394,14 +394,14 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     auto pdef = std::make_shared<ob::ProblemDefinition>(si_);
     pdef->setStartAndGoalStates(initial, final, 6);
 
-    // Defining the planner (EST, RRT, KPIECE, PDST) (is not very smooth but don't know how else)
-    using PLANNER = oc::EST;
+    // Defining the planner (EST, RRT, KPIECE1, PDST) (is not very smooth but don't know how else)
+    using PLANNER = oc::KPIECE1;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(0.5);
+    planner->as<PLANNER>()->setGoalBias(1.0);
     
     // comment if RRT
     space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
