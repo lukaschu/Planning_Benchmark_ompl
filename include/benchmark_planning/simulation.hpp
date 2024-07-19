@@ -16,6 +16,7 @@
 #include <ompl/base/ScopedState.h>
 
 #include <control_msgs/msg/joint_trajectory_controller_state.hpp>
+#include <std_srvs/srv/empty.hpp>
 
 class Simulation : public rclcpp::Node
 {   
@@ -27,6 +28,7 @@ private:
     std::shared_ptr<Planning> planner_; // planning class 
     ob::PathPtr path; // will contain the relevant path
     rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr state_subscription_; // Subscriber to get the current state 
+    rclcpp::Client<std_srvs::srv::Empty>::SharedPtr gazebo_resetter;
     std::vector<double> initial_state_; // will contain the infos for the planner on the initial state
     bool state_received_ = false; // a bool which given it is set to true, starts the simulation
     const double pi_ = 3.14159;

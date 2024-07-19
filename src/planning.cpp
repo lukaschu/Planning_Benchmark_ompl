@@ -3,8 +3,8 @@
 //#include "benchmark_planning/collision_checker.hpp"
 
 const std::string MOVE_GROUP = "ur_manipulator";
-const double PROP_STEPSIZE = 0.05;
-const double MAX_SOLVETIME = 600.0;
+const double PROP_STEPSIZE = 0.25;
+const double MAX_SOLVETIME = 300.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -28,8 +28,8 @@ Planning::Planning(rclcpp::Node *parent_node)
     auto velocity = std::make_shared<ob::RealVectorStateSpace>(6);
     auto time = std::make_shared<ob::TimeStateSpace>();
 
-    space_->addSubspace(position, 1.0);
-    space_->addSubspace(velocity, 0.0);
+    space_->addSubspace(position, 0.75);
+    space_->addSubspace(velocity, 0.25);
     space_->addSubspace(time, 0);  
 
     /*
@@ -353,6 +353,20 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
             acc4 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[4] / 180 * pi_;
             acc5 = control_path[i]->as<oc::RealVectorControlSpace::ControlType>()->values[5] / 180 * pi_;
         }
+        // save the state 
+        else 
+        {
+            // We save the final state a document + the time
+            std::ofstream myfile;
+            myfile.open ("results_EST.txt", std::ios::app);
+            myfile << "FINAL POSE:\n";
+            myfile << pos0 << "\n" << pos1 << "\n" <<  pos2 << "\n" << pos3 << "\n" << pos4 << "\n" << pos5 << "\n";
+            myfile << "EXECUTION TIME:\n";
+            myfile << exec_time << "\n";
+            myfile << "PLANNING TIME:\n";
+            myfile << duration / 1000 << "\n";
+            myfile.close();
+        }
         
         point.accelerations = {acc0, acc1, acc2, acc3, acc4, acc5};
         
@@ -401,7 +415,7 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(1.0);
+    planner->as<PLANNER>()->setGoalBias(0.5);
     
     // comment if RRT
     space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));

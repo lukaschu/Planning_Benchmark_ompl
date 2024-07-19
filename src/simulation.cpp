@@ -10,12 +10,12 @@ Simulation::Simulation()
     // Retrieve the scenario which is specified as a launch argument
     this->declare_parameter<std::string>("scenario", "1");
 
-    // This function calls the obstacle_checker.define_scenario function which loads in all relevant obstacles and environments
-    planner_->call_scenario_loader(this->get_parameter("scenario").as_string()); // mostly for obstacles
-
     // callback function that saves the current state of the simulated environment 
     state_subscription_ = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>(
         "joint_trajectory_controller/state",  1000, std::bind(&Simulation::get_current_state, this, _1));
+
+    // service caller which resets the gazebo world (/gazebo/reset_world, type: empty)
+    gazebo_resetter = this->create_client<std_srvs::srv::Empty>("/reset_world");
 }
 
 /*
@@ -24,22 +24,49 @@ is only called as soon as the current state is recovered by the callback functio
 */
 void Simulation::run_simulation(std::vector<double> true_start_state_pos) 
 {   
-    // Get access to scenario
-    std::string scenario = this->get_parameter("scenario").as_string();
+    for(int i = 0; i <= 32; ++i)
+    {
+        // Get access to scenario
+        std::string scenario = std::to_string(i);
 
-    // Now we recover the goal
-    std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
-    std::string goal_scenario_path = package_share_directory + "/config/scenarios/final_scenario_" + scenario + "/goal.yaml";
+        planner_->call_scenario_loader(scenario); // mostly for obstacles
 
-    // Retrieve the goal configuration corresponding to the scenario
-    std::filesystem::path ScenarioGoalPath{goal_scenario_path};
-    YAML::Node GoalNode = YAML::LoadFile(ScenarioGoalPath);
-    std::vector<double> goal_config = GoalNode["goal"].as<std::vector<double>>();
+        // Now we recover the goal
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("benchmark_planning");
+        std::string goal_scenario_path = package_share_directory + "/config/scenarios/final_scenario_" + scenario + "/goal.yaml";
 
-    RCLCPP_INFO(this->get_logger(), "Initializing the solver");
+        // Retrieve the goal configuration corresponding to the scenario
+        std::filesystem::path ScenarioGoalPath{goal_scenario_path};
+        YAML::Node GoalNode = YAML::LoadFile(ScenarioGoalPath);
+        std::vector<double> goal_config = GoalNode["goal"].as<std::vector<double>>();
 
-    planner_->solve(initial_state_, true_start_state_pos, goal_config, path);
-    //planner_->solve_with_moveit();
+        RCLCPP_INFO(this->get_logger(), "Initializing the solver");
+
+        planner_->solve(initial_state_, true_start_state_pos, goal_config, path);
+        //planner_->solve_with_moveit();
+
+        // Here we also need to reset the world and make include a sleep statement
+        std::cerr << "We wait 10 seconds and then restart the planning algorithm" << std::endl; 
+
+        rclcpp::sleep_for(std::chrono::seconds(10));
+
+        while (!gazebo_resetter->wait_for_service(std::chrono::seconds(1)))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+                return;
+            }
+            RCLCPP_INFO(this->get_logger(), "Service not available, waiting again...");
+        }
+
+        auto request = std::make_shared<std_srvs::srv::Empty::Request>();
+        auto result = gazebo_resetter->async_send_request(request);
+
+        std::cerr << "We wait 5 seconds for the simulation to be reset" << std::endl;
+        rclcpp::sleep_for(std::chrono::seconds(5));
+        
+    }
 }
 
 /*

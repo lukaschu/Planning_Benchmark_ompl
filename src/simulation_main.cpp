@@ -14,7 +14,7 @@ int main(int argc, char ** argv)
     // executor->add_node(node->get_node_base_interface());
     // executor->spin();
     rclcpp::spin(node);
-    //rclcpp::shutdown();
+    rclcpp::shutdown();
     
     return 0;
 }
