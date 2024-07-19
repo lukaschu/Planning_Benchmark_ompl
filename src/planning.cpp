@@ -409,7 +409,7 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     pdef->setStartAndGoalStates(initial, final, 6);
 
     // Defining the planner (EST, RRT, KPIECE1, PDST) (is not very smooth but don't know how else)
-    using PLANNER = oc::KPIECE1;
+    using PLANNER = oc::EST;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
