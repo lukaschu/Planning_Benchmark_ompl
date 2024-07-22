@@ -46,6 +46,7 @@ class Collision_Checker
         void load_scene(double t); // updating scene for planning (executed each time a new sample needs to be checked)
         void update_scene(); // updating scene for simulation
         void simulate_obstacles();  // is called to cconfigure the simulation
+        void reset_obstacles(); // resets the private variables in the end for the next sim to start
     private:
         std::shared_ptr<planning_scene::PlanningScene> planning_scene_; // for collision checking
         rclcpp::Publisher<moveit_msgs::msg::PlanningScene>::SharedPtr scene_publisher_; // publisher for visualization

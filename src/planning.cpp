@@ -460,6 +460,7 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
 
         collision_checker_->simulate_obstacles(); // moves the obstacles 
         move_group_interface_.asyncExecute(moveit_plan); 
+        collision_checker_->reset_obstacles();
     }
     planner->clear(); // just clear it in the end
 }

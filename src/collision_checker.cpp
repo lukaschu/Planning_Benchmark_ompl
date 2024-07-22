@@ -308,6 +308,19 @@ void Collision_Checker::simulate_obstacles()
             std::bind(&Collision_Checker::update_scene, this));
 }
 
+void Collision_Checker::reset_obstacles()
+{
+    msg_mesh_.clear();
+    mesh_trajectoryFrame_.clear();
+    mesh_collision_object_timeinterval_.clear(); 
+    mesh_trajectory_.clear(); 
+
+    msg_primitive_.clear();
+    primitive_trajectoryFrame_.clear();
+    primitive_collision_object_timeinterval_.clear(); 
+    primitive_dimensions_.clear();
+    primitive_trajectory_.clear(); 
+}
 
 /*
 Move the obstacles in real time (for sim)
