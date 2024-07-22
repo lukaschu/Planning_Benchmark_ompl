@@ -1,0 +1,2 @@
+source;share/benchmark_planning/environment/ament_prefix_path.sh
+source;share/benchmark_planning/environment/path.sh

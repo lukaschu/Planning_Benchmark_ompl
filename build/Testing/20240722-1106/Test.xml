@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="(empty)"
+	BuildStamp="20240722-1106-Experimental"
+	Name="LukassLinux"
+	Generator="ctest-3.22.1"
+	CompilerName="/usr/bin/c++"
+	CompilerVersion="11.4.0"
+	OSName="Linux"
+	Hostname="LukassLinux"
+	OSRelease="6.5.0-41-generic"
+	OSVersion="#41~22.04.2-Ubuntu SMP PREEMPT_DYNAMIC Mon Jun  3 11:32:55 UTC 2"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="GenuineIntel"
+	VendorID="Intel Corporation"
+	FamilyID="6"
+	ModelID="165"
+	ProcessorCacheSize="16384"
+	NumberOfLogicalCPU="16"
+	NumberOfPhysicalCPU="8"
+	TotalVirtualMemory="2047"
+	TotalPhysicalMemory="15601"
+	LogicalProcessorsPerPhysical="2"
+	ProcessorClockFrequency="2719.91"
+	>
+	<Testing>
+		<StartDateTime>Jul 22 13:06 CEST</StartDateTime>
+		<StartTestTime>1721646367</StartTestTime>
+		<TestList/>
+		<EndDateTime>Jul 22 13:06 CEST</EndDateTime>
+		<EndTestTime>1721646367</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>
