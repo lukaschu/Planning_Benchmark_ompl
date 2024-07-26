@@ -4,7 +4,7 @@
 
 const std::string MOVE_GROUP = "ur_manipulator";
 const double PROP_STEPSIZE = 0.25;
-const double MAX_SOLVETIME = 300.0;
+const double MAX_SOLVETIME = 400.0;
 
 using MyDuration = std::chrono::duration<double>;
 
@@ -358,7 +358,7 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
         {
             // We save the final state a document + the time
             std::ofstream myfile;
-            myfile.open ("results_EST.txt", std::ios::app);
+            myfile.open ("results_RRT.txt", std::ios::app);
             myfile << "FINAL POSE:\n";
             myfile << pos0 << "\n" << pos1 << "\n" <<  pos2 << "\n" << pos3 << "\n" << pos4 << "\n" << pos5 << "\n";
             myfile << "EXECUTION TIME:\n";
@@ -406,10 +406,10 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
 
     // Problem definition
     auto pdef = std::make_shared<ob::ProblemDefinition>(si_);
-    pdef->setStartAndGoalStates(initial, final, 6);
+    pdef->setStartAndGoalStates(initial, final, 8);
 
-    // Defining the planner (EST, RRT, KPIECE1, PDST) (is not very smooth but don't know how else)
-    using PLANNER = oc::EST;
+    // Defining the planner (EST, RRT, KPIECE1, PDST, SST) (is not very smooth but don't know how else)
+    using PLANNER = oc::RRT;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
@@ -418,8 +418,8 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     planner->as<PLANNER>()->setGoalBias(0.5);
     
     // comment if RRT
-    space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
-    planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
+    // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
+    // planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
 
     planner->setup();
 
