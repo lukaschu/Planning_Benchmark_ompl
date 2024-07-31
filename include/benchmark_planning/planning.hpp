@@ -47,6 +47,7 @@ class Planning : public rclcpp::Node
 {
 public:
     Planning(rclcpp::Node *parent_node);
+    ~Planning();
     static void dynamics(const ob::State *start, const oc::Control *control, const double duration, ob::State *end); // Defining the state transition
     void call_scenario_loader(std::string scenario); // is called to establish the whole scenario and environemnt
     void set_initial(ob::ScopedState<> *initial,ob::ScopedState<> *final, std::vector<double> initial_state, std::vector<double> final_state); // conditions are set for planner
@@ -56,6 +57,8 @@ public:
     rclcpp::Publisher<moveit_msgs::msg::RobotTrajectory>::SharedPtr debug_publisher_; // Publisher to debug
 
 private:
+    std::shared_ptr<robot_model_loader::RobotModelLoader> robot_model_loader_;
+    moveit::core::RobotModelPtr kinematic_model_;
     std::shared_ptr<ob::CompoundStateSpace> space_; // defines config. space (q,q_dot)
     std::shared_ptr<oc::RealVectorControlSpace> ctrl_space_; // defines input/ctrl space (acccel. = q_dot_dot)
     std::shared_ptr<oc::SpaceInformation> si_; // space information

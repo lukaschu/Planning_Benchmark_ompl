@@ -18,13 +18,18 @@ Simulation::Simulation()
     gazebo_resetter = this->create_client<std_srvs::srv::Empty>("/reset_world");
 }
 
+Simulation::~Simulation()
+{
+    planner_.reset();
+}
+
 /*
 Runs the simulation with the given scenario and solver 
 is only called as soon as the current state is recovered by the callback function: get_current_state
 */
 void Simulation::run_simulation(std::vector<double> true_start_state_pos) 
 {   
-    for(int i = 0; i <= 32; ++i)
+    for(int i = 0; i <= 30; ++i)
     {
         // Get access to scenario
         std::string scenario = std::to_string(i);

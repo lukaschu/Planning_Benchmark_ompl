@@ -16,9 +16,10 @@ Planning::Planning(rclcpp::Node *parent_node)
     // End Debug
 
     // initialize the collision checker (after intializing the robot model)
-    robot_model_loader::RobotModelLoader robot_model_loader(this->shared_from_this());
-    const moveit::core::RobotModelPtr& kinematic_model = robot_model_loader.getModel();
-    collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model, main_node_);
+    // robot_model_loader::RobotModelLoader robot_model_loader_(this->shared_from_this());
+    robot_model_loader_ = std::make_shared<robot_model_loader::RobotModelLoader>(this->shared_from_this());
+    kinematic_model_ = robot_model_loader_->getModel();
+    collision_checker_ = std::make_shared<Collision_Checker>(kinematic_model_, main_node_);
 
     // planning space
     space_ = std::make_shared<ob::CompoundStateSpace>();
@@ -134,6 +135,13 @@ Planning::Planning(rclcpp::Node *parent_node)
     si_->setMinMaxControlDuration(2,80);
 
     si_->setup();
+}
+
+Planning::~Planning()
+{   
+    collision_checker_.reset();
+    kinematic_model_.reset();
+    robot_model_loader_.reset();
 }
 
 /*
@@ -358,7 +366,7 @@ MoveGroupInterface::Plan Planning::recover_moveit_path(ob::PathPtr &path, std::v
         {
             // We save the final state a document + the time
             std::ofstream myfile;
-            myfile.open ("results_RRT.txt", std::ios::app);
+            myfile.open ("results_KPIECE2.txt", std::ios::app);
             myfile << "FINAL POSE:\n";
             myfile << pos0 << "\n" << pos1 << "\n" <<  pos2 << "\n" << pos3 << "\n" << pos4 << "\n" << pos5 << "\n";
             myfile << "EXECUTION TIME:\n";
@@ -409,17 +417,17 @@ void Planning::solve(std::vector<double> initial_state,std::vector<double> true_
     pdef->setStartAndGoalStates(initial, final, 8);
 
     // Defining the planner (EST, RRT, KPIECE1, PDST, SST) (is not very smooth but don't know how else)
-    using PLANNER = oc::RRT;
+    using PLANNER = oc::KPIECE1;
 
     auto planner = std::make_shared<PLANNER>(si_);
     planner->setProblemDefinition(pdef);
 
     // Define a bias towards the goal
-    planner->as<PLANNER>()->setGoalBias(0.5);
+    planner->as<PLANNER>()->setGoalBias(1.0);
     
     // comment if RRT
-    // space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
-    // planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
+    space_->registerProjection("myProjection", ob::ProjectionEvaluatorPtr(new MyProjection(space_)));
+    planner->as<PLANNER>()->setProjectionEvaluator("myProjection");
 
     planner->setup();
 

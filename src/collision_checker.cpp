@@ -10,6 +10,12 @@ Collision_Checker::Collision_Checker(const moveit::core::RobotModelPtr& kinemati
     scene_publisher_ = parent_node->create_publisher<moveit_msgs::msg::PlanningScene>("planning_scene", 10); // publish the plan
 }
 
+Collision_Checker::~Collision_Checker()
+{
+    planning_scene_.reset();
+}
+
+
 /*
 Function that checks if a state given as (q,q_dot,t) /in R^7, is a valid state  
 */
